@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "Apstra MCP server": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--with",
+        "fastmcp",
+        "fastmcp",
+        "run",
+        "/Users/nitinvig/ScratchPad/Learning/mcp/apstra_mcp.py"
+      ]
+    }
+  }
+}

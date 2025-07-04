@@ -1,104 +1,67 @@
 from fastmcp import FastMCP
-import httpx, sys
+import apstra_core
 
 # Create an MCP server
 mcp = FastMCP("Apstra MCP server")
 
-# IP of Cloudlabs AOS Server
-aos_server = 'Apstra server IP/Name'
-username = 'Apstra username'
-password = 'Apstra password'
-
-# The authentication function
-def auth():
-    try:
-        url_login = 'https://' + aos_server + '/api/user/login'
-        headers_init = { 'Content-Type':"application/json", 'Cache-Control':"no-cache" }
-        data = f'{{"username": "{username}","password":"{password}"}}'
-        response = httpx.post(url_login, data=data, headers=headers_init, verify=False)
-        if response.status_code != 201:
-            sys.exit('error: authentication failed')
-        auth_token = response.json()['token']
-        headers = { 'AuthToken':auth_token, 'Content-Type':"application/json", 'Cache-Control':"no-cache" }
-        return(headers)
-    except Exception as e:
-        print(f"An unexpected error occurred: {e}", file=sys.stderr)
-
 # Get blueprints
 @mcp.tool()
-def get_bp() -> str:
+def get_bp(server_url: str = None) -> str:
     """Gets blueprint information"""
-    try:
-        headers = auth()
-        url = 'https://' + aos_server + '/api/blueprints'
-        response = httpx.get(url, headers=headers, verify=False)
-        return(response.json()['items'])
-    except Exception as e:
-        print(f"An unexpected error occurred: {e}", file=sys.stderr)
+    return apstra_core.get_bp(server_url)
 
 # Get racks
 @mcp.tool()
-def get_racks(blueprint_id) -> str:
+def get_racks(blueprint_id: str, server_url: str = None) -> str:
     """Gets rack information for a blueprint"""
-    try:
-        headers = auth()
-        url = 'https://' + aos_server + '/api/blueprints/' + blueprint_id + '/racks'
-        response = httpx.get(url, headers=headers, verify=False)
-        return(response.json()['items'])
-    except Exception as e:
-        print(f"An unexpected error occurred: {e}", file=sys.stderr)
+    return apstra_core.get_racks(blueprint_id, server_url)
 
 # Get routing zones
 @mcp.tool()
-def get_rz(blueprint_id) -> str:
+def get_rz(blueprint_id: str, server_url: str = None) -> str:
     """Gets routing zone information for a blueprint"""
-    try:
-        headers = auth()
-        url = 'https://' + aos_server + '/api/blueprints/' + blueprint_id + '/security-zones'
-        response = httpx.get(url, headers=headers, verify=False)
-        return(response.json())
-    except Exception as e:
-        print(f"An unexpected error occurred: {e}", file=sys.stderr)
+    return apstra_core.get_rz(blueprint_id, server_url)
 
 
 # Create virtual networks
 @mcp.tool()
-def create_vn(blueprint_id, security_zone_id, vn_name) -> str:
+def create_vn(blueprint_id: str, security_zone_id: str, vn_name: str, server_url: str = None) -> str:
     """Creates a virtual network in a given blueprint and routing zone"""
-    try:
-        headers = auth()
-        url = 'https://' + aos_server + '/api/blueprints/' + blueprint_id + '/virtual-networks'
-        data = f'{{"label": "{vn_name}","vn_type":"vxlan","security_zone_id":"{security_zone_id}"}}'
-        # print(data)
-        response = httpx.post(url, data=data, headers=headers, verify=False)
-        return(response.json())
-    except Exception as e:
-        print(f"An unexpected error occurred: {e}", file=sys.stderr)
+    return apstra_core.create_vn(blueprint_id, security_zone_id, vn_name, server_url)
 
 # Check staging version through diff-status
 @mcp.tool()
-def get_diff_status(blueprint_id) -> str:
+def get_diff_status(blueprint_id: str, server_url: str = None) -> str:
     """Gets the diff status for a blueprint"""
-    try:
-        headers = auth()
-        url = 'https://' + aos_server + '/api/blueprints/' + blueprint_id + '/diff-status'
-        response = httpx.get(url, headers=headers, verify=False)
-        return(response.json())
-    except Exception as e:
-        print(f"An unexpected error occurred: {e}", file=sys.stderr)
+    return apstra_core.get_diff_status(blueprint_id, server_url)
 
 # Deploy config
 @mcp.tool()
-def deploy(blueprint_id: str, description: str, staging_version:int) -> str:
+def deploy(blueprint_id: str, description: str, staging_version: int, server_url: str = None) -> str:
     """Deploys the config for a blueprint"""
-    try:
-        headers = auth()
-        url = 'https://' + aos_server + '/api/blueprints/' + blueprint_id + '/deploy'
-        data = f'{{"version": {staging_version},"description":"{description}"}}'
-        print(url)
-        print(data)
-        response = httpx.put(url, headers=headers, data=data, verify=False)
-        return(response.json())
-    except Exception as e:
-        print(f"An unexpected error occurred: {e}", file=sys.stderr)
+    return apstra_core.deploy(blueprint_id, description, staging_version, server_url)
+
+# Get templates
+@mcp.tool()
+def get_templates(server_url: str = None) -> str:
+    """Gets available templates for blueprint creation"""
+    return apstra_core.get_templates(server_url)
+
+# Create datacenter blueprint
+@mcp.tool()
+def create_datacenter_blueprint(blueprint_name: str, template_id: str, server_url: str = None) -> str:
+    """Creates a new datacenter blueprint with the specified name and template"""
+    return apstra_core.create_datacenter_blueprint(blueprint_name, template_id, server_url)
+
+# Create freeform blueprint
+@mcp.tool()
+def create_freeform_blueprint(blueprint_name: str, server_url: str = None) -> str:
+    """Creates a new freeform blueprint with the specified name"""
+    return apstra_core.create_freeform_blueprint(blueprint_name, server_url)
+
+# Delete blueprint
+@mcp.tool()
+def delete_blueprint(blueprint_id: str, server_url: str = None) -> str:
+    """Deletes a blueprint by ID"""
+    return apstra_core.delete_blueprint(blueprint_id, server_url)
 

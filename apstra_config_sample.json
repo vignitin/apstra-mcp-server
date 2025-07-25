@@ -1,0 +1,5 @@
+{
+  "aos_server": "your-apstra-server-ip-or-hostname",
+  "username": "your-username",
+  "password": "your-password"
+}

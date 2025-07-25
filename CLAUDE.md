@@ -8,7 +8,7 @@ This is a Python-based MCP (Model Context Protocol) server that provides tools f
 
 ## Architecture
 
-The project consists of a single Python file (`apstra_mcp_v2.py`) that implements:
+The project consists of a single Python file (`apstra_mcp.py`) that implements:
 
 - **FastMCP Server**: Built using the `fastmcp` framework
 - **Authentication Layer**: Handles token-based authentication with Apstra server
@@ -28,25 +28,25 @@ The project consists of a single Python file (`apstra_mcp_v2.py`) that implement
 The server is designed to run with `uv` (though not currently available in this environment):
 
 ```bash
-uv run --with fastmcp fastmcp run apstra_mcp_v2.py
+uv run --with fastmcp python3 apstra_mcp.py -f apstra_config.json
 ```
 
 Alternative approach using pip:
 ```bash
 pip install fastmcp httpx
-python3 apstra_mcp_v2.py
+python3 apstra_mcp.py -f apstra_config.json
 ```
 
 ## Configuration
 
-Before running, update the connection parameters in `apstra_mcp_v2.py`:
+Before running, create a configuration file (see `apstra_config_sample.json` for reference):
 - `aos_server`: IP address or hostname of the Apstra server
 - `username`: Apstra username for authentication  
 - `password`: Apstra password for authentication
 
 ## Claude Desktop Integration
 
-The `claude_desktop_config.json` shows how this MCP server integrates with Claude Desktop. Note that the file path in the config needs to be updated to match the actual location of `apstra_mcp_v2.py`.
+The `claude_desktop_config.json` shows how this MCP server integrates with Claude Desktop. Note that the file paths need to be updated to match the actual locations of `apstra_mcp.py` and your config file.
 
 ## Dependencies
 
@@ -57,5 +57,5 @@ The `claude_desktop_config.json` shows how this MCP server integrates with Claud
 ## Security Notes
 
 - Server uses `verify=False` for HTTPS requests (bypasses SSL verification)
-- Credentials are stored in plaintext in the source code
-- Consider using environment variables or secure credential storage for production use
+- Credentials are stored in JSON configuration files
+- Consider using encrypted credential storage for production use

@@ -3,11 +3,49 @@ Core Apstra functions without MCP decorators for testing and reuse
 """
 import httpx
 import sys
+import json
+import os
 
-# Default AOS Server configuration (can be overridden)
-aos_server = "10.87.2.74"
-username = "admin"
-password = "Apstramarvis@123"
+# Global configuration variables
+aos_server = ''
+username = ''
+password = ''
+
+# Load configuration from JSON file
+def load_config(config_file=None):
+    """
+    Load Apstra configuration from JSON file.
+    Args:
+        config_file: Optional path to config file. Defaults to 'apstra_config.json'
+    """
+    if config_file is None:
+        config_file = 'apstra_config.json'
+    
+    # If not absolute path, look in same directory as this script
+    if not os.path.isabs(config_file):
+        config_file = os.path.join(os.path.dirname(__file__), config_file)
+    
+    try:
+        with open(config_file, 'r') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        print(f"Config file not found: {config_file}", file=sys.stderr)
+        print(f"Please create a config file based on apstra_config_sample.json", file=sys.stderr)
+        return {}
+    except json.JSONDecodeError:
+        print(f"Invalid JSON in config file: {config_file}", file=sys.stderr)
+        return {}
+
+def initialize_config(config_file=None):
+    """Initialize global configuration variables from specified config file"""
+    global aos_server, username, password
+    config = load_config(config_file)
+    aos_server = config.get('aos_server', '')
+    username = config.get('username', '')
+    password = config.get('password', '')
+
+# Load default configuration
+initialize_config()
 
 # The authentication function
 def auth(server_url=None, user=None, passwd=None):

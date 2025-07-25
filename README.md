@@ -39,23 +39,25 @@ uv add fastmcp httpx
 
 2. Clone or download this repository
 
-3. Configure your Apstra server connection by editing `apstra_mcp_v2.py`:
-```python
-aos_server = 'your-apstra-server-ip-or-hostname'
-username = 'your-username'
-password = 'your-password'
+3. Configure your Apstra server connection by editing `apstra_config.json` (see `apstra_config_sample.json` for reference):
+```json
+{
+  "aos_server": "your-apstra-server-ip-or-hostname",
+  "username": "your-username",
+  "password": "your-password"
+}
 ```
 
 ## Running the Server
 
 ### Using uv (recommended):
 ```bash
-uv run --with fastmcp fastmcp run apstra_mcp_v2.py
+uv run --with fastmcp fastmcp run apstra_mcp.py -f apstra_config.json
 ```
 
 ### Using pip:
 ```bash
-python3 apstra_mcp_v2.py
+python3 apstra_mcp.py -f apstra_config.json
 ```
 
 ## Claude Desktop Integration
@@ -71,9 +73,10 @@ To use this MCP server with Claude Desktop, add the following to your Claude Des
         "run",
         "--with",
         "fastmcp",
-        "fastmcp",
-        "run",
-        "/path/to/your/apstra_mcp_v2.py"
+        "python3",
+        "/path/to/your/apstra_mcp.py",
+        "-f",
+        "/path/to/your/apstra_config.json"
       ]
     }
   }

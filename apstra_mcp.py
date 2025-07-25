@@ -1,5 +1,18 @@
 from fastmcp import FastMCP
 import apstra_core
+import argparse
+import sys
+
+# Parse command line arguments
+def parse_args():
+    parser = argparse.ArgumentParser(description='Apstra MCP Server')
+    parser.add_argument('-f', '--config-file', default='apstra_config.json',
+                      help='Path to Apstra configuration JSON file (default: apstra_config.json)')
+    return parser.parse_args()
+
+# Initialize configuration
+args = parse_args()
+apstra_core.initialize_config(args.config_file)
 
 # Create an MCP server
 mcp = FastMCP("Apstra MCP server")

@@ -72,7 +72,7 @@ To use this MCP server with Claude Desktop, add the following to your Claude Des
       "args": [
         "run",
         "--with",
-        "fastmcp",
+        "fastmcp,httpx",
         "python3",
         "/path/to/your/apstra_mcp.py",
         "-f",

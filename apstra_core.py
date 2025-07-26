@@ -89,11 +89,8 @@ def get_bp(server_url=None):
         headers, server = auth(server_url)
         url = f'https://{server}/api/blueprints'
         response = httpx.get(url, headers=headers, verify=False)
-        if response.status_code == 200:
-            import json
-            return json.dumps(response.json()['items'], indent=2)
-        else:
-            return f"Error: HTTP {response.status_code} - {response.text}"
+        response.raise_for_status()
+        return json.dumps(response.json()['items'], indent=2)
     except Exception as e:
         error_msg = f"An unexpected error occurred: {e}"
         print(error_msg, file=sys.stderr)
@@ -106,9 +103,12 @@ def get_racks(blueprint_id, server_url=None):
         headers, server = auth(server_url)
         url = f'https://{server}/api/blueprints/{blueprint_id}/racks'
         response = httpx.get(url, headers=headers, verify=False)
-        return(response.json()['items'])
+        response.raise_for_status()
+        return json.dumps(response.json()['items'], indent=2)
     except Exception as e:
-        print(f"An unexpected error occurred: {e}", file=sys.stderr)
+        error_msg = f"An unexpected error occurred: {e}"
+        print(error_msg, file=sys.stderr)
+        return error_msg
 
 # Get routing zones
 def get_rz(blueprint_id, server_url=None):
@@ -117,9 +117,26 @@ def get_rz(blueprint_id, server_url=None):
         headers, server = auth(server_url)
         url = f'https://{server}/api/blueprints/{blueprint_id}/security-zones'
         response = httpx.get(url, headers=headers, verify=False)
-        return(response.json())
+        response.raise_for_status()
+        return json.dumps(response.json(), indent=2)
     except Exception as e:
-        print(f"An unexpected error occurred: {e}", file=sys.stderr)
+        error_msg = f"An unexpected error occurred: {e}"
+        print(error_msg, file=sys.stderr)
+        return error_msg
+
+# Get virtual networks
+def get_vn(blueprint_id, server_url=None):
+    """Gets virtual networks information for a blueprint"""
+    try:
+        headers, server = auth(server_url)
+        url = f'https://{server}/api/blueprints/{blueprint_id}/virtual-networks'
+        response = httpx.get(url, headers=headers, verify=False)
+        response.raise_for_status()
+        return json.dumps(response.json(), indent=2)
+    except Exception as e:
+        error_msg = f"An unexpected error occurred: {e}"
+        print(error_msg, file=sys.stderr)
+        return error_msg
 
 # Create virtual networks
 def create_vn(blueprint_id, security_zone_id, vn_name, server_url=None):
@@ -129,9 +146,12 @@ def create_vn(blueprint_id, security_zone_id, vn_name, server_url=None):
         url = f'https://{server}/api/blueprints/{blueprint_id}/virtual-networks'
         data = f'{{"label": "{vn_name}","vn_type":"vxlan","security_zone_id":"{security_zone_id}"}}'
         response = httpx.post(url, data=data, headers=headers, verify=False)
-        return(response.json())
+        response.raise_for_status()
+        return json.dumps(response.json(), indent=2)
     except Exception as e:
-        print(f"An unexpected error occurred: {e}", file=sys.stderr)
+        error_msg = f"An unexpected error occurred: {e}"
+        print(error_msg, file=sys.stderr)
+        return error_msg
 
 # Check staging version through diff-status
 def get_diff_status(blueprint_id, server_url=None):
@@ -140,9 +160,12 @@ def get_diff_status(blueprint_id, server_url=None):
         headers, server = auth(server_url)
         url = f'https://{server}/api/blueprints/{blueprint_id}/diff-status'
         response = httpx.get(url, headers=headers, verify=False)
-        return(response.json())
+        response.raise_for_status()
+        return json.dumps(response.json(), indent=2)
     except Exception as e:
-        print(f"An unexpected error occurred: {e}", file=sys.stderr)
+        error_msg = f"An unexpected error occurred: {e}"
+        print(error_msg, file=sys.stderr)
+        return error_msg
 
 # Deploy config
 def deploy(blueprint_id, description, staging_version, server_url=None):
@@ -151,12 +174,13 @@ def deploy(blueprint_id, description, staging_version, server_url=None):
         headers, server = auth(server_url)
         url = f'https://{server}/api/blueprints/{blueprint_id}/deploy'
         data = f'{{"version": {staging_version},"description":"{description}"}}'
-        print(url)
-        print(data)
         response = httpx.put(url, headers=headers, data=data, verify=False)
-        return(response.json())
+        response.raise_for_status()
+        return json.dumps(response.json(), indent=2)
     except Exception as e:
-        print(f"An unexpected error occurred: {e}", file=sys.stderr)
+        error_msg = f"An unexpected error occurred: {e}"
+        print(error_msg, file=sys.stderr)
+        return error_msg
 
 # Get templates
 def get_templates(server_url=None):
@@ -165,9 +189,12 @@ def get_templates(server_url=None):
         headers, server = auth(server_url)
         url = f'https://{server}/api/design/templates'
         response = httpx.get(url, headers=headers, verify=False)
-        return(response.json())
+        response.raise_for_status()
+        return json.dumps(response.json(), indent=2)
     except Exception as e:
-        print(f"An unexpected error occurred: {e}", file=sys.stderr)
+        error_msg = f"An unexpected error occurred: {e}"
+        print(error_msg, file=sys.stderr)
+        return error_msg
 
 # Create datacenter blueprint
 def create_datacenter_blueprint(blueprint_name, template_id, server_url=None):
@@ -177,9 +204,12 @@ def create_datacenter_blueprint(blueprint_name, template_id, server_url=None):
         url = f'https://{server}/api/blueprints'
         data = f'{{"design":"two_stage_l3clos","init_type":"template_reference","template_id":"{template_id}","label":"{blueprint_name}"}}'
         response = httpx.post(url, data=data, headers=headers, verify=False)
-        return(response.json())
+        response.raise_for_status()
+        return json.dumps(response.json(), indent=2)
     except Exception as e:
-        print(f"An unexpected error occurred: {e}", file=sys.stderr)
+        error_msg = f"An unexpected error occurred: {e}"
+        print(error_msg, file=sys.stderr)
+        return error_msg
 
 # Create freeform blueprint
 def create_freeform_blueprint(blueprint_name, server_url=None):
@@ -189,9 +219,12 @@ def create_freeform_blueprint(blueprint_name, server_url=None):
         url = f'https://{server}/api/blueprints'
         data = f'{{"design":"freeform","init_type":"none","label":"{blueprint_name}"}}'
         response = httpx.post(url, data=data, headers=headers, verify=False)
-        return(response.json())
+        response.raise_for_status()
+        return json.dumps(response.json(), indent=2)
     except Exception as e:
-        print(f"An unexpected error occurred: {e}", file=sys.stderr)
+        error_msg = f"An unexpected error occurred: {e}"
+        print(error_msg, file=sys.stderr)
+        return error_msg
 
 # Delete blueprint
 def delete_blueprint(blueprint_id, server_url=None):
@@ -200,6 +233,9 @@ def delete_blueprint(blueprint_id, server_url=None):
         headers, server = auth(server_url)
         url = f'https://{server}/api/blueprints/{blueprint_id}'
         response = httpx.delete(url, headers=headers, verify=False)
-        return(response.text if response.text else "Blueprint deleted successfully")
+        response.raise_for_status()
+        return response.text if response.text else "Blueprint deleted successfully"
     except Exception as e:
-        print(f"An unexpected error occurred: {e}", file=sys.stderr)
+        error_msg = f"An unexpected error occurred: {e}"
+        print(error_msg, file=sys.stderr)
+        return error_msg

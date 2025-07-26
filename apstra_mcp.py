@@ -53,6 +53,11 @@ def get_rz(blueprint_id: str, server_url: str = None) -> str:
     """Gets routing zone information for a blueprint"""
     return apstra_core.get_rz(blueprint_id, server_url)
 
+# Get virtual networks
+@mcp.tool()
+def get_vn(blueprint_id: str, server_url: str = None) -> str:
+    """Gets virtual network information for a blueprint"""
+    return apstra_core.get_vn(blueprint_id, server_url)
 
 # Create virtual networks
 @mcp.tool()

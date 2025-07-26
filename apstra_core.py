@@ -138,6 +138,20 @@ def get_vn(blueprint_id, server_url=None):
         print(error_msg, file=sys.stderr)
         return error_msg
 
+# Get anomalies
+def get_anomalies(blueprint_id, server_url=None):
+    """Gets anomalies information for a blueprint"""
+    try:
+        headers, server = auth(server_url)
+        url = f'https://{server}/api/blueprints/{blueprint_id}/anomalies'
+        response = httpx.get(url, headers=headers, verify=False)
+        response.raise_for_status()
+        return json.dumps(response.json(), indent=2)
+    except Exception as e:
+        error_msg = f"An unexpected error occurred: {e}"
+        print(error_msg, file=sys.stderr)
+        return error_msg
+
 # Create virtual networks
 def create_vn(blueprint_id, security_zone_id, vn_name, server_url=None):
     """Creates a virtual network in a given blueprint and routing zone"""

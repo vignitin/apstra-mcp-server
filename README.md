@@ -19,6 +19,7 @@ A Model Context Protocol (MCP) server that provides tools for interacting with J
 - `get_racks(blueprint_id)` - Get rack information for a blueprint
 - `get_rz(blueprint_id)` - Get routing zone information for a blueprint
 - `get_vn(blueprint_id)` - Get virtual network information for a blueprint
+- `get_anomalies(blueprint_id)` - Get anomaly information for a blueprint
 - `create_vn(blueprint_id, security_zone_id, vn_name)` - Create virtual networks
 - `get_diff_status(blueprint_id)` - Get deployment diff status
 - `deploy(blueprint_id, description, staging_version)` - Deploy configurations
@@ -135,6 +136,7 @@ Once connected to Claude Desktop, you can use natural language commands like:
 - "Show me all blueprints in the Apstra system"
 - "List the racks for blueprint [blueprint-id]"
 - "Show me the virtual networks in blueprint [blueprint-id]"
+- "Get anomalies for blueprint [blueprint-id]"
 - "Create a virtual network called 'web-tier' in routing zone [zone-id]"
 - "Deploy the staging configuration for blueprint [blueprint-id] with description 'Production deployment'"
 - "Get available templates for creating new blueprints"

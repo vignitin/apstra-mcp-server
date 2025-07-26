@@ -59,6 +59,12 @@ def get_vn(blueprint_id: str, server_url: str = None) -> str:
     """Gets virtual network information for a blueprint"""
     return apstra_core.get_vn(blueprint_id, server_url)
 
+# Get anomalies
+@mcp.tool()
+def get_anomalies(blueprint_id: str, server_url: str = None) -> str:
+    """Gets anomalies information for a blueprint"""
+    return apstra_core.get_anomalies(blueprint_id, server_url)
+
 # Create virtual networks
 @mcp.tool()
 def create_vn(blueprint_id: str, security_zone_id: str, vn_name: str, server_url: str = None) -> str:

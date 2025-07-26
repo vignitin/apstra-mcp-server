@@ -8,6 +8,7 @@ import os
 
 # Global configuration variables
 aos_server = ''
+aos_port = ''
 username = ''
 password = ''
 
@@ -38,9 +39,10 @@ def load_config(config_file=None):
 
 def initialize_config(config_file=None):
     """Initialize global configuration variables from specified config file"""
-    global aos_server, username, password
+    global aos_server, aos_port, username, password
     config = load_config(config_file)
     aos_server = config.get('aos_server', '')
+    aos_port = config.get('aos_port', '')
     username = config.get('username', '')
     password = config.get('password', '')
 
@@ -49,7 +51,21 @@ initialize_config()
 
 # The authentication function
 def auth(server_url=None, user=None, passwd=None):
-    server = server_url or aos_server
+    # Handle server URL construction
+    if server_url:
+        server = server_url
+    else:
+        # Check if aos_server already includes port (for backward compatibility)
+        if ':' in aos_server:
+            server = aos_server
+        else:
+            # Combine server and port
+            if aos_port:
+                server = f"{aos_server}:{aos_port}"
+            else:
+                # Default to port 443 if no port specified
+                server = f"{aos_server}:443"
+    
     auth_user = user or username
     auth_pass = passwd or password
     try:
@@ -58,12 +74,13 @@ def auth(server_url=None, user=None, passwd=None):
         data = f'{{"username": "{auth_user}","password":"{auth_pass}"}}'
         response = httpx.post(url_login, data=data, headers=headers_init, verify=False)
         if response.status_code != 201:
-            sys.exit('error: authentication failed')
+            raise Exception(f'Authentication failed: HTTP {response.status_code} - {response.text}')
         auth_token = response.json()['token']
         headers = { 'AuthToken':auth_token, 'Content-Type':"application/json", 'Cache-Control':"no-cache" }
         return(headers, server)
     except Exception as e:
         print(f"An unexpected error occurred: {e}", file=sys.stderr)
+        raise  # Re-raise the exception instead of returning None
 
 # Get blueprints
 def get_bp(server_url=None):
@@ -72,9 +89,15 @@ def get_bp(server_url=None):
         headers, server = auth(server_url)
         url = f'https://{server}/api/blueprints'
         response = httpx.get(url, headers=headers, verify=False)
-        return(response.json()['items'])
+        if response.status_code == 200:
+            import json
+            return json.dumps(response.json()['items'], indent=2)
+        else:
+            return f"Error: HTTP {response.status_code} - {response.text}"
     except Exception as e:
-        print(f"An unexpected error occurred: {e}", file=sys.stderr)
+        error_msg = f"An unexpected error occurred: {e}"
+        print(error_msg, file=sys.stderr)
+        return error_msg
 
 # Get racks
 def get_racks(blueprint_id, server_url=None):

@@ -71,6 +71,12 @@ def get_vn(blueprint_id: str, server_url: str = None) -> str:
     """Gets virtual network information for a blueprint"""
     return apstra_core.get_vn(blueprint_id, server_url)
 
+# Get system info
+@mcp.tool()
+def get_systems(server_url: str = None) -> str:
+    """Return a list of all devices in Apstra and their key facts"""
+    return apstra_core.get_systems(server_url)
+
 # Check staging version through diff-status
 @mcp.tool()
 def get_diff_status(blueprint_id: str, server_url: str = None) -> str:

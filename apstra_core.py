@@ -268,6 +268,20 @@ def get_protocol_sessions(blueprint_id, server_url=None):
         print(error_msg, file=sys.stderr)
         return error_msg
 
+# Get system info
+def get_systems(server_url=None):
+    """Return a list of all devices in Apstra and their key facts"""
+    try:
+        headers, server = auth(server_url)
+        url = f'https://{server}/api/systems'
+        response = httpx.get(url, headers=headers, verify=False)
+        response.raise_for_status()
+        return json.dumps(response.json(), indent=2)
+    except Exception as e:
+        error_msg = f"An unexpected error occurred: {e}"
+        print(error_msg, file=sys.stderr)
+        return error_msg
+
 # CREATE FUNCTIONS - All create operations grouped together
 
 # Create virtual networks

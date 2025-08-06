@@ -6,6 +6,84 @@ import sys
 import json
 import os
 
+# Helper function for formatting guidelines
+def get_formatting_guidelines():
+    """Returns comprehensive formatting guidelines for presenting network infrastructure data in tables with proper icons and structure."""
+    return """
+# OUTPUT FORMATTING GUIDELINES
+
+When displaying network infrastructure information, always follow these formatting standards:
+
+## Table Format for Device Information
+Always present device/system information in well-structured tables with these standard columns:
+
+### Device Overview Table
+| Status | Device Name | IP Address | Loopback IP | ASN | Role | Model | OS Version |
+|--------|-------------|------------|-------------|-----|------|-------|------------|
+| ✅ | spine-01 | 192.168.1.10 | 10.0.0.1 | 65001 | Spine | QFX5200 | 21.4R1 |
+| ❌ | leaf-02 | 192.168.1.22 | 10.0.0.22 | 65002 | Leaf | EX4650 | 20.4R3 |
+
+### Protocol Sessions Table
+| Status | Local Device | Remote Device | Session Type | State | Uptime | Routes Rx/Tx |
+|--------|--------------|---------------|--------------|-------|--------|---------------|
+| ✅ | spine-01 | leaf-01 | eBGP | Established | 2d 14h | 150/75 |
+| ⚠️ | spine-02 | leaf-03 | eBGP | Connect | 0h 0m | 0/0 |
+
+### Anomaly/Issues Table
+| Severity | Device | Issue Type | Description | Duration | Actions |
+|----------|--------|------------|-------------|----------|---------|
+| 🔴 | leaf-01 | BGP | Session Down | 2h 15m | Check connectivity |
+| 🟡 | spine-02 | Interface | High Utilization | 45m | Monitor traffic |
+
+## Status Icons Guide
+Use these icons consistently across all outputs:
+
+### Health Status
+- ✅ **Healthy/Good/Up/Active/Connected**
+- ❌ **Critical/Failed/Down/Disconnected** 
+- ⚠️ **Warning/Degraded/Flapping/Pending**
+- 🔄 **In Progress/Syncing/Updating**
+- ⏸️ **Paused/Suspended/Maintenance**
+- ❓ **Unknown/Unmonitored**
+
+### Severity Levels
+- 🔴 **Critical** - Immediate attention required
+- 🟡 **Warning** - Attention needed
+- 🟢 **Info** - Informational only
+- 🔵 **Debug** - Troubleshooting info
+
+### Network Elements
+- 🌐 **WAN/Internet** connections
+- 🏢 **Datacenter/Campus** networks  
+- 🔀 **Switch/Router** devices
+- 💾 **Storage** systems
+- 🖥️ **Servers/Compute** resources
+
+## Summary Sections
+Always include summary sections for complex data:
+
+### 📊 **Summary**
+- **Total Devices**: 24 (✅ 22 healthy, ❌ 2 issues)
+- **BGP Sessions**: 48 (✅ 46 established, ⚠️ 2 connecting) 
+- **Anomalies**: 3 (🔴 1 critical, 🟡 2 warnings)
+
+## Data Organization Guidelines
+- **Group related information** together (e.g., all spine switches, then leaf switches)
+- **Sort by criticality** when showing issues (critical first, then warnings)
+- **Use consistent column ordering** across similar tables
+- **Include units** for metrics (Mbps, %, ms, etc.)
+- **Show timestamps** in consistent format (YYYY-MM-DD HH:MM:SS or relative time)
+
+## Response Structure
+Structure all responses with:
+1. **Quick Summary** with key metrics and status icons
+2. **Detailed Tables** with comprehensive information  
+3. **Notable Issues** highlighting problems requiring attention
+4. **Recommendations** for next steps or actions needed
+
+This formatting ensures consistent, scannable, and actionable network infrastructure information.
+"""
+
 # Global configuration variables
 aos_server = ''
 aos_port = ''
@@ -97,33 +175,33 @@ def get_bp(server_url=None):
         print(error_msg, file=sys.stderr)
         return error_msg
 
-# Get node details
-def get_nodes(blueprint_id, server_url=None):
-    """Gets node information for a blueprint"""
-    try:
-        headers, server = auth(server_url)
-        url = f'https://{server}/api/blueprints/{blueprint_id}/nodes'
-        response = httpx.get(url, headers=headers, verify=False)
-        response.raise_for_status()
-        return json.dumps(response.json()['nodes'], indent=2)
-    except Exception as e:
-        error_msg = f"An unexpected error occurred: {e}"
-        print(error_msg, file=sys.stderr)
-        return error_msg
+# # Get node details
+# def get_nodes(blueprint_id, server_url=None):
+#     """Gets node information for a blueprint"""
+#     try:
+#         headers, server = auth(server_url)
+#         url = f'https://{server}/api/blueprints/{blueprint_id}/nodes'
+#         response = httpx.get(url, headers=headers, verify=False)
+#         response.raise_for_status()
+#         return json.dumps(response.json()['nodes'], indent=2)
+#     except Exception as e:
+#         error_msg = f"An unexpected error occurred: {e}"
+#         print(error_msg, file=sys.stderr)
+#         return error_msg
 
-# Get node ID details
-def get_node_id(blueprint_id, node_id, server_url=None):
-    """Gets specific node information by ID for a blueprint"""
-    try:
-        headers, server = auth(server_url)
-        url = f'https://{server}/api/blueprints/{blueprint_id}/nodes/{node_id}'
-        response = httpx.get(url, headers=headers, verify=False)
-        response.raise_for_status()
-        return json.dumps(response.json(), indent=2)
-    except Exception as e:
-        error_msg = f"An unexpected error occurred: {e}"
-        print(error_msg, file=sys.stderr)
-        return error_msg
+# # Get node ID details
+# def get_node_id(blueprint_id, node_id, server_url=None):
+#     """Gets specific node information by ID for a blueprint"""
+#     try:
+#         headers, server = auth(server_url)
+#         url = f'https://{server}/api/blueprints/{blueprint_id}/nodes/{node_id}'
+#         response = httpx.get(url, headers=headers, verify=False)
+#         response.raise_for_status()
+#         return json.dumps(response.json(), indent=2)
+#     except Exception as e:
+#         error_msg = f"An unexpected error occurred: {e}"
+#         print(error_msg, file=sys.stderr)
+#         return error_msg
 
 # Get racks
 def get_racks(blueprint_id, server_url=None):
@@ -167,6 +245,19 @@ def get_vn(blueprint_id, server_url=None):
         print(error_msg, file=sys.stderr)
         return error_msg
 
+# Get system info
+def get_system_info(blueprint_id, server_url=None):
+    """Gets information about systems inside the blueprint"""
+    try:
+        headers, server = auth(server_url)
+        url = f'https://{server}/api/blueprints/{blueprint_id}/experience/web/system-info'
+        response = httpx.get(url, headers=headers, verify=False)
+        response.raise_for_status()
+        return json.dumps(response.json(), indent=2)
+    except Exception as e:
+        error_msg = f"An unexpected error occurred: {e}"
+        print(error_msg, file=sys.stderr)
+        return error_msg
 
 # Check staging version through diff-status
 def get_diff_status(blueprint_id, server_url=None):
@@ -268,19 +359,19 @@ def get_protocol_sessions(blueprint_id, server_url=None):
         print(error_msg, file=sys.stderr)
         return error_msg
 
-# Get system info
-def get_systems(server_url=None):
-    """Return a list of all devices in Apstra and their key facts"""
-    try:
-        headers, server = auth(server_url)
-        url = f'https://{server}/api/systems'
-        response = httpx.get(url, headers=headers, verify=False)
-        response.raise_for_status()
-        return json.dumps(response.json(), indent=2)
-    except Exception as e:
-        error_msg = f"An unexpected error occurred: {e}"
-        print(error_msg, file=sys.stderr)
-        return error_msg
+# # Get system info
+# def get_systems(server_url=None):
+#     """Return a list of all devices in Apstra and their key facts"""
+#     try:
+#         headers, server = auth(server_url)
+#         url = f'https://{server}/api/systems'
+#         response = httpx.get(url, headers=headers, verify=False)
+#         response.raise_for_status()
+#         return json.dumps(response.json(), indent=2)
+#     except Exception as e:
+#         error_msg = f"An unexpected error occurred: {e}"
+#         print(error_msg, file=sys.stderr)
+#         return error_msg
 
 # CREATE FUNCTIONS - All create operations grouped together
 

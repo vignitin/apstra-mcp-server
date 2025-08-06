@@ -3,6 +3,7 @@ import apstra_core
 import argparse
 import sys
 
+
 # Parse command line arguments
 def parse_args():
     parser = argparse.ArgumentParser(description='Apstra MCP Server')
@@ -35,53 +36,107 @@ except Exception as e:
     traceback.print_exc(file=sys.stderr)
     raise
 
+# QUERY TOOLS - All query operations grouped together
+
 # Get blueprints
 @mcp.tool()
 def get_bp(server_url: str = None) -> str:
     """Gets blueprint information"""
-    return apstra_core.get_bp(server_url)
+    formatting = apstra_core.get_formatting_guidelines()
+    data = apstra_core.get_bp(server_url)
+    return f"{formatting}\n\n--- BLUEPRINT DATA ---\n{data}"
 
-# Get nodes
-@mcp.tool()
-def get_nodes(blueprint_id: str, server_url: str = None) -> str:
-    """Gets node information for a blueprint"""
-    return apstra_core.get_nodes(blueprint_id, server_url)
+# # Get nodes
+# @mcp.tool()
+# def get_nodes(blueprint_id: str, server_url: str = None) -> str:
+#     """Gets node information for a blueprint"""
+#     return apstra_core.get_nodes(blueprint_id, server_url)
 
-# Get node by ID
-@mcp.tool()
-def get_node_id(blueprint_id: str, node_id: str, server_url: str = None) -> str:
-    """Gets specific node information by ID for a blueprint"""
-    return apstra_core.get_node_id(blueprint_id, node_id, server_url)
+# # Get node by ID
+# @mcp.tool()
+# def get_node_id(blueprint_id: str, node_id: str, server_url: str = None) -> str:
+#     """Gets specific node information by ID for a blueprint"""
+#     return apstra_core.get_node_id(blueprint_id, node_id, server_url)
 
 # Get racks
 @mcp.tool()
 def get_racks(blueprint_id: str, server_url: str = None) -> str:
     """Gets rack information for a blueprint"""
-    return apstra_core.get_racks(blueprint_id, server_url)
+    formatting = apstra_core.get_formatting_guidelines()
+    data = apstra_core.get_racks(blueprint_id, server_url)
+    return f"{formatting}\n\n--- RACK DATA ---\n{data}"
 
 # Get routing zones
 @mcp.tool()
 def get_rz(blueprint_id: str, server_url: str = None) -> str:
     """Gets routing zone information for a blueprint"""
-    return apstra_core.get_rz(blueprint_id, server_url)
+    formatting = apstra_core.get_formatting_guidelines()
+    data = apstra_core.get_rz(blueprint_id, server_url)
+    return f"{formatting}\n\n--- ROUTING ZONE DATA ---\n{data}"
 
 # Get virtual networks
 @mcp.tool()
 def get_vn(blueprint_id: str, server_url: str = None) -> str:
     """Gets virtual network information for a blueprint"""
-    return apstra_core.get_vn(blueprint_id, server_url)
+    formatting = apstra_core.get_formatting_guidelines()
+    data = apstra_core.get_vn(blueprint_id, server_url)
+    return f"{formatting}\n\n--- VIRTUAL NETWORK DATA ---\n{data}"
 
 # Get system info
 @mcp.tool()
-def get_systems(server_url: str = None) -> str:
-    """Return a list of all devices in Apstra and their key facts"""
-    return apstra_core.get_systems(server_url)
+def get_system_info(blueprint_id: str, server_url: str = None) -> str:
+    """Gets information about the systems in the blueprint"""
+    formatting = apstra_core.get_formatting_guidelines()
+    data = apstra_core.get_system_info(blueprint_id, server_url)
+    return f"{formatting}\n\n--- SYSTEM DATA ---\n{data}"
+
+# # Get system info
+# @mcp.tool()
+# def get_systems(server_url: str = None) -> str:
+#     """Return a list of all devices in Apstra and their key facts"""
+#     return apstra_core.get_systems(server_url)
 
 # Check staging version through diff-status
 @mcp.tool()
 def get_diff_status(blueprint_id: str, server_url: str = None) -> str:
     """Gets the diff status for a blueprint"""
-    return apstra_core.get_diff_status(blueprint_id, server_url)
+    formatting = apstra_core.get_formatting_guidelines()
+    data = apstra_core.get_diff_status(blueprint_id, server_url)
+    return f"{formatting}\n\n--- DIFF STATUS DATA ---\n{data}"
+
+# Get templates
+@mcp.tool()
+def get_templates(server_url: str = None) -> str:
+    """Gets available templates for blueprint creation"""
+    formatting = apstra_core.get_formatting_guidelines()
+    data = apstra_core.get_templates(server_url)
+    return f"{formatting}\n\n--- TEMPLATE DATA ---\n{data}"
+
+# Get anomalies
+@mcp.tool()
+def get_anomalies(blueprint_id: str, server_url: str = None) -> str:
+    """Gets anomalies information for a blueprint"""
+    formatting = apstra_core.get_formatting_guidelines()
+    data = apstra_core.get_anomalies(blueprint_id, server_url)
+    return f"{formatting}\n\n--- ANOMALY DATA ---\n{data}"
+
+# Get remote gateways
+@mcp.tool()
+def get_remote_gw(blueprint_id: str, server_url: str = None) -> str:
+    """Gets a list of all remote gateways within a blueprint, keyed by remote gateway node ID."""
+    formatting = apstra_core.get_formatting_guidelines()
+    data = apstra_core.get_remote_gw(blueprint_id, server_url)
+    return f"{formatting}\n\n--- REMOTE GATEWAY DATA ---\n{data}"
+
+# Get protocol sessions
+@mcp.tool()
+def get_protocol_sessions(blueprint_id: str, server_url: str = None) -> str:
+    """Return a list of all protocol sessions from the specified blueprint."""
+    formatting = apstra_core.get_formatting_guidelines()
+    data = apstra_core.get_protocol_sessions(blueprint_id, server_url)
+    return f"{formatting}\n\n--- PROTOCOL SESSION DATA ---\n{data}"
+
+# MANAGEMENT TOOLS - Deploy and delete operations
 
 # Deploy config
 @mcp.tool()
@@ -95,38 +150,11 @@ def deploy(blueprint_id: str, description: str, staging_version: int, server_url
     """
     return apstra_core.deploy(blueprint_id, description, staging_version, server_url)
 
-# Get templates
-@mcp.tool()
-def get_templates(server_url: str = None) -> str:
-    """Gets available templates for blueprint creation"""
-    return apstra_core.get_templates(server_url)
-
 # Delete blueprint
 @mcp.tool()
 def delete_blueprint(blueprint_id: str, server_url: str = None) -> str:
     """Deletes a blueprint by ID"""
     return apstra_core.delete_blueprint(blueprint_id, server_url)
-
-print("DEBUG: All tools registered successfully", file=sys.stderr)
-print("DEBUG: Server setup complete, waiting for connections...", file=sys.stderr)
-
-# Get anomalies
-@mcp.tool()
-def get_anomalies(blueprint_id: str, server_url: str = None) -> str:
-    """Gets anomalies information for a blueprint"""
-    return apstra_core.get_anomalies(blueprint_id, server_url)
-
-# Get remote gateways
-@mcp.tool()
-def get_remote_gw(blueprint_id: str, server_url: str = None) -> str:
-    """Gets a list of all remote gateways within a blueprint, keyed by remote gateway node ID."""
-    return apstra_core.get_remote_gw(blueprint_id, server_url)
-
-# Get protocol sessions
-@mcp.tool()
-def get_protocol_sessions(blueprint_id: str, server_url: str = None) -> str:
-    """Return a list of all protocol sessions from the specified blueprint."""
-    return apstra_core.get_protocol_sessions(blueprint_id, server_url)
 
 # CREATE TOOLS - All create operations grouped together
 

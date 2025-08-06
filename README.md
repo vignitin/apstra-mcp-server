@@ -5,14 +5,15 @@ A Model Context Protocol (MCP) server that provides tools for interacting with J
 ## Features
 
 - **Blueprint Management**: Retrieve, create, and delete blueprint configurations
-- **Infrastructure Queries**: Get rack, routing zone, node, and protocol session details
+- **Infrastructure Queries**: Get rack, routing zone, and system information
 - **Network Provisioning**: Create virtual networks and remote gateways for datacenter interconnection
 - **Configuration Management**: Check deployment status and deploy configurations
 - **Template Management**: Get available templates for blueprint creation
 - **Remote Gateway Management**: Create and manage EVPN remote gateways between datacenters
-- **Node Management**: Query individual nodes and their detailed configurations
+- **System Information**: Query system details within blueprints
 - **Protocol Session Monitoring**: Monitor BGP and other protocol sessions
 - **Port Configuration**: Flexible server connection with custom port support (defaults to 443)
+- **Enhanced Output Formatting**: All tools return data with comprehensive formatting guidelines including tables, icons, and structured layouts
 - **Robust Error Handling**: Comprehensive error reporting and debugging capabilities
 - **Seamless Integration**: Works with Claude Desktop and other MCP clients
 
@@ -20,12 +21,10 @@ A Model Context Protocol (MCP) server that provides tools for interacting with J
 
 ### Query Tools
 - `get_bp()` - Get blueprint information
-- `get_nodes(blueprint_id)` - Get all nodes information for a blueprint
-- `get_node_id(blueprint_id, node_id)` - Get specific node information by ID
 - `get_racks(blueprint_id)` - Get rack information for a blueprint
 - `get_rz(blueprint_id)` - Get routing zone information for a blueprint
 - `get_vn(blueprint_id)` - Get virtual network information for a blueprint
-- `get_systems()` - Get list of all devices in Apstra and their key facts
+- `get_system_info(blueprint_id)` - Get system information for devices in a blueprint
 - `get_diff_status(blueprint_id)` - Get deployment diff status
 - `get_templates()` - Get available templates for blueprint creation
 - `get_anomalies(blueprint_id)` - Get anomaly information for a blueprint
@@ -199,10 +198,8 @@ Once connected to Claude Desktop, you can use natural language commands like:
 ### Basic Queries
 - "Show me all blueprints in the Apstra system"
 - "List the racks for blueprint [blueprint-id]"
-- "Show me all nodes in blueprint [blueprint-id]"
-- "Get details for node [node-id] in blueprint [blueprint-id]"
+- "Show me the system information for blueprint [blueprint-id]"
 - "Show me the virtual networks in blueprint [blueprint-id]"
-- "Get all devices and their system information"
 - "Get protocol sessions for blueprint [blueprint-id]"
 - "Get anomalies for blueprint [blueprint-id]"
 
@@ -219,6 +216,16 @@ Once connected to Claude Desktop, you can use natural language commands like:
 - "Get available templates for creating new blueprints"
 - "Create a new datacenter blueprint called 'production-dc' using template [template-id]"
 - "Delete blueprint [blueprint-id]"
+
+## Output Formatting
+
+All query tools now return enhanced formatted output with:
+- **Structured Tables**: Device information, protocol sessions, and anomalies are displayed in well-organized tables
+- **Status Icons**: Visual indicators for health status (✅ ❌ ⚠️), severity levels (🔴 🟡 🟢), and network elements (🌐 🏢 🔀)
+- **Summary Sections**: Quick overview with key metrics and status counts
+- **Consistent Layout**: All responses follow a standardized format for easy scanning and analysis
+
+This formatting helps you quickly identify issues, understand network state, and take appropriate actions.
 
 ## Troubleshooting
 

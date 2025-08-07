@@ -2,6 +2,13 @@ from fastmcp import FastMCP
 import apstra_core
 import argparse
 import sys
+import asyncio
+import signal
+import os
+import json
+import time
+from typing import Optional
+from session_manager import session_manager
 
 
 # Parse command line arguments
@@ -9,13 +16,60 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Apstra MCP Server')
     parser.add_argument('-f', '--config-file', default='apstra_config.json',
                       help='Path to Apstra configuration JSON file (default: apstra_config.json)')
+    parser.add_argument('-t', '--transport', default='stdio', choices=['stdio', 'sse'],
+                      help='Transport mode: stdio for local/Claude Desktop, sse for remote HTTP clients (default: stdio)')
+    parser.add_argument('-H', '--host', default='127.0.0.1',
+                      help='Host to bind to for HTTP transport (default: 127.0.0.1)')
+    parser.add_argument('-p', '--port', type=int, default=8080,
+                      help='Port to bind to for HTTP transport (default: 8080)')
     return parser.parse_args()
+
+# Global variables for server state
+args = None
+authentication_enabled = False
+
+def get_user_credentials_from_request() -> Optional[dict]:
+    """Extract user credentials from current request context"""
+    # For stdio transport, check environment variables for per-user RBAC
+    if args and args.transport == 'stdio':
+        env_creds = {
+            'apstra_username': os.getenv('APSTRA_USERNAME'),
+            'apstra_password': os.getenv('APSTRA_PASSWORD'), 
+            'apstra_server': os.getenv('APSTRA_SERVER'),
+            'apstra_port': os.getenv('APSTRA_PORT', '443')
+        }
+        # Only return env credentials if all required fields are present
+        if env_creds['apstra_username'] and env_creds['apstra_password'] and env_creds['apstra_server']:
+            print(f"DEBUG: Using environment credentials for {env_creds['apstra_username']}", file=sys.stderr)
+            return env_creds
+        else:
+            print("DEBUG: No environment credentials found, using global config", file=sys.stderr)
+    
+    # For SSE transport, use session tokens
+    elif args and args.transport == 'sse':
+        session_token = getattr(mcp, '_current_session_token', None)
+        if session_token:
+            return session_manager.validate_session(session_token)
+    
+    # Fallback to None (will use global config credentials)
+    return None
 
 # Initialize configuration
 try:
     print("DEBUG: Starting server initialization...", file=sys.stderr)
     args = parse_args()
     print(f"DEBUG: Parsed args: {args}", file=sys.stderr)
+    print(f"DEBUG: Transport mode: {args.transport}", file=sys.stderr)
+    
+    # Check authentication requirements
+    if args.transport != 'stdio':
+        tokens = load_user_tokens()
+        authentication_enabled = bool(tokens)
+        if authentication_enabled:
+            print("DEBUG: Authentication enabled for HTTP transport", file=sys.stderr)
+        else:
+            print("DEBUG: WARNING - No authentication tokens found. HTTP transport will be unprotected!", file=sys.stderr)
+    
     print(f"DEBUG: Initializing config from: {args.config_file}", file=sys.stderr)
     apstra_core.initialize_config(args.config_file)
     print("DEBUG: Config initialized successfully", file=sys.stderr)
@@ -36,14 +90,205 @@ except Exception as e:
     traceback.print_exc(file=sys.stderr)
     raise
 
+# HEALTH CHECK ENDPOINT
+
+@mcp.tool()
+def health() -> str:
+    """
+    Health check endpoint for monitoring and load balancers
+    
+    Returns:
+        JSON response with server status
+    """
+    try:
+        active_sessions = len(session_manager.sessions)
+        return json.dumps({
+            "status": "healthy",
+            "service": "Apstra MCP Server",
+            "transport": args.transport if args else "unknown",
+            "active_sessions": active_sessions,
+            "timestamp": time.time()
+        }, indent=2)
+    except Exception as e:
+        return json.dumps({
+            "status": "unhealthy", 
+            "error": str(e),
+            "timestamp": time.time()
+        }, indent=2)
+
+# AUTHENTICATION ENDPOINTS - For session management
+
+@mcp.tool()
+def login(apstra_username: str, apstra_password: str, apstra_server: str, apstra_port: str = "443") -> str:
+    """
+    Authenticate with Apstra server and create session (SSE transport only)
+    
+    Args:
+        apstra_username: Apstra username
+        apstra_password: Apstra password
+        apstra_server: Apstra server hostname or IP
+        apstra_port: Apstra server port (default: 443)
+        
+    Returns:
+        JSON response with session token or error
+        
+    Note:
+        For stdio transport (Claude Desktop), use environment variables instead:
+        APSTRA_USERNAME, APSTRA_PASSWORD, APSTRA_SERVER, APSTRA_PORT
+    """
+    try:
+        # Check transport mode
+        if args and args.transport == 'stdio':
+            return json.dumps({
+                "status": "info",
+                "message": "Login not needed for stdio transport. Use environment variables for RBAC:",
+                "instructions": {
+                    "APSTRA_USERNAME": "your-username@company.com",
+                    "APSTRA_PASSWORD": "your-password", 
+                    "APSTRA_SERVER": "your-apstra-server.com",
+                    "APSTRA_PORT": "443"
+                },
+                "note": "Set these in your Claude Desktop MCP server configuration"
+            }, indent=2)
+        
+        # SSE transport - proceed with session creation
+        success, message, session_token = session_manager.authenticate_user(
+            apstra_username, apstra_password, apstra_server, apstra_port
+        )
+        
+        if success:
+            return json.dumps({
+                "status": "success",
+                "message": message,
+                "session_token": session_token,
+                "expires_in": 3600  # 1 hour
+            }, indent=2)
+        else:
+            return json.dumps({
+                "status": "error", 
+                "message": message
+            }, indent=2)
+            
+    except Exception as e:
+        return json.dumps({
+            "status": "error",
+            "message": f"Login failed: {str(e)}"
+        }, indent=2)
+
+@mcp.tool()
+def logout(session_token: str) -> str:
+    """
+    Logout and invalidate session (SSE transport only)
+    
+    Args:
+        session_token: Session token to invalidate
+        
+    Returns:
+        JSON response with logout status
+        
+    Note:
+        For stdio transport (Claude Desktop), sessions are not used.
+        Authentication is handled via environment variables.
+    """
+    try:
+        # Check transport mode
+        if args and args.transport == 'stdio':
+            return json.dumps({
+                "status": "info",
+                "message": "Logout not applicable for stdio transport.",
+                "note": "Authentication is handled via environment variables. No sessions to logout."
+            }, indent=2)
+        
+        # SSE transport - proceed with logout
+        success = session_manager.logout_session(session_token)
+        
+        if success:
+            return json.dumps({
+                "status": "success",
+                "message": "Session logged out successfully"
+            }, indent=2)
+        else:
+            return json.dumps({
+                "status": "error",
+                "message": "Invalid session token"
+            }, indent=2)
+            
+    except Exception as e:
+        return json.dumps({
+            "status": "error",
+            "message": f"Logout failed: {str(e)}"
+        }, indent=2)
+
+@mcp.tool()
+def session_info(session_token: str = None) -> str:
+    """
+    Get information about current session or transport mode
+    
+    Args:
+        session_token: Session token to check (SSE transport only)
+        
+    Returns:
+        JSON response with session/transport information
+    """
+    try:
+        # Check transport mode
+        if args and args.transport == 'stdio':
+            # Show environment-based auth info
+            env_creds = get_user_credentials_from_request()
+            if env_creds:
+                return json.dumps({
+                    "status": "success",
+                    "transport": "stdio",
+                    "auth_mode": "environment_variables",
+                    "apstra_username": env_creds.get('apstra_username'),
+                    "apstra_server": env_creds.get('apstra_server'),
+                    "apstra_port": env_creds.get('apstra_port')
+                }, indent=2)
+            else:
+                return json.dumps({
+                    "status": "info",
+                    "transport": "stdio", 
+                    "auth_mode": "global_config",
+                    "message": "Using global configuration credentials. Set APSTRA_USERNAME, APSTRA_PASSWORD, APSTRA_SERVER environment variables for RBAC."
+                }, indent=2)
+        
+        # SSE transport - check session
+        if not session_token:
+            return json.dumps({
+                "status": "error",
+                "message": "session_token parameter required for SSE transport"
+            }, indent=2)
+            
+        info = session_manager.get_session_info(session_token)
+        
+        if info:
+            return json.dumps({
+                "status": "success",
+                "transport": "sse",
+                "auth_mode": "session_based",
+                "session_info": info
+            }, indent=2)
+        else:
+            return json.dumps({
+                "status": "error",
+                "message": "Invalid or expired session token"
+            }, indent=2)
+            
+    except Exception as e:
+        return json.dumps({
+            "status": "error",
+            "message": f"Session info failed: {str(e)}"
+        }, indent=2)
+
 # QUERY TOOLS - All query operations grouped together
 
 # Get blueprints
 @mcp.tool()
 def get_bp(server_url: str = None) -> str:
     """Gets blueprint information"""
+    user_credentials = get_user_credentials_from_request()
     formatting = apstra_core.get_formatting_guidelines()
-    data = apstra_core.get_bp(server_url)
+    data = apstra_core.get_bp(server_url, user_credentials=user_credentials)
     return f"{formatting}\n\n--- BLUEPRINT DATA ---\n{data}"
 
 # # Get nodes
@@ -62,16 +307,18 @@ def get_bp(server_url: str = None) -> str:
 @mcp.tool()
 def get_racks(blueprint_id: str, server_url: str = None) -> str:
     """Gets rack information for a blueprint"""
+    user_credentials = get_user_credentials_from_request()
     formatting = apstra_core.get_formatting_guidelines()
-    data = apstra_core.get_racks(blueprint_id, server_url)
+    data = apstra_core.get_racks(blueprint_id, server_url, user_credentials=user_credentials)
     return f"{formatting}\n\n--- RACK DATA ---\n{data}"
 
 # Get routing zones
 @mcp.tool()
 def get_rz(blueprint_id: str, server_url: str = None) -> str:
     """Gets routing zone information for a blueprint"""
+    user_credentials = get_user_credentials_from_request()
     formatting = apstra_core.get_formatting_guidelines()
-    data = apstra_core.get_rz(blueprint_id, server_url)
+    data = apstra_core.get_rz(blueprint_id, server_url, user_credentials=user_credentials)
     return f"{formatting}\n\n--- ROUTING ZONE DATA ---\n{data}"
 
 # Get virtual networks
@@ -198,13 +445,74 @@ def create_freeform_blueprint(blueprint_name: str, server_url: str = None) -> st
 print("DEBUG: All tools registered successfully", file=sys.stderr)
 print("DEBUG: Server setup complete, waiting for connections...", file=sys.stderr)
 
+def setup_signal_handlers():
+    """Setup signal handlers for graceful shutdown"""
+    def signal_handler(signum, frame):
+        print(f"\nReceived signal {signum}, shutting down gracefully...", file=sys.stderr)
+        sys.exit(0)
+    
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+
 def main():
     """Main function to run the MCP server"""
     print("DEBUG: Starting main() function...", file=sys.stderr)
+    
+    # Setup signal handlers
+    setup_signal_handlers()
+    
     try:
-        # Run the FastMCP server with stdio transport (default for Claude Desktop)
-        print("DEBUG: Calling mcp.run()...", file=sys.stderr)
-        mcp.run(transport="stdio")
+        if args.transport == 'stdio':
+            print("DEBUG: Starting stdio transport (for Claude Desktop)...", file=sys.stderr)
+            mcp.run(transport="stdio")
+            
+        elif args.transport == 'sse':
+            print(f"DEBUG: Starting SSE transport on {args.host}:{args.port}...", file=sys.stderr)
+            print("DEBUG: Session-based authentication enabled for HTTP transport", file=sys.stderr)
+            
+            # Add session authentication middleware
+            @mcp.middleware  
+            async def session_auth_middleware(request, call_next):
+                # Skip auth for login endpoint
+                if hasattr(request, 'method') and request.method == 'POST':
+                    request_data = getattr(request, 'json', {})
+                    if isinstance(request_data, dict) and request_data.get('method') == 'tools/call':
+                        tool_name = request_data.get('params', {}).get('name', '')
+                        if tool_name == 'login':
+                            return await call_next(request)
+                
+                # Check for session token in Authorization header
+                auth_header = request.headers.get('Authorization', '')
+                if not auth_header.startswith('Bearer '):
+                    return {
+                        'error': 'Authentication required. Please login first to get a session token.',
+                        'code': 401
+                    }
+                
+                session_token = auth_header[7:]  # Remove 'Bearer ' prefix
+                user_creds = session_manager.validate_session(session_token)
+                if not user_creds:
+                    return {
+                        'error': 'Invalid or expired session token. Please login again.',
+                        'code': 401
+                    }
+                
+                # Store session token in request context for tools to use
+                setattr(mcp, '_current_session_token', session_token)
+                
+                return await call_next(request)
+            
+            # Clean up expired sessions periodically
+            session_manager.cleanup_expired_sessions()
+            
+            # Run HTTP/SSE server
+            mcp.run(transport="sse", host=args.host, port=args.port)
+            
+        else:
+            raise ValueError(f"Unsupported transport: {args.transport}")
+            
+    except KeyboardInterrupt:
+        print("\nShutdown requested by user", file=sys.stderr)
     except Exception as e:
         print(f"DEBUG: Error in main(): {e}", file=sys.stderr)
         import traceback

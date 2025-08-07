@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  apstra-mcp-server:
+    build: .
+    container_name: apstra-mcp-server
+    ports:
+      - "8080:8080"
+    volumes:
+      # Mount config file
+      - ./apstra_config.json:/app/apstra_config.json:ro
+    environment:
+      # Optional environment variables
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+    networks:
+      - apstra-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Optional: Add a reverse proxy for SSL termination
+  nginx:
+    image: nginx:alpine
+    container_name: apstra-mcp-nginx
+    ports:
+      - "443:443"
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - apstra-mcp-server
+    restart: unless-stopped
+    networks:
+      - apstra-network
+    profiles:
+      - with-nginx
+
+networks:
+  apstra-network:
+    driver: bridge

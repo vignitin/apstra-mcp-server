@@ -1,0 +1,19 @@
+# Apstra MCP Server Requirements
+
+# Core MCP framework
+fastmcp>=0.1.0
+
+# HTTP client for Apstra API calls
+httpx>=0.25.0
+
+# Standard library dependencies (included for completeness)
+# These are typically included with Python but listed for clarity
+argparse
+asyncio
+hashlib
+json
+secrets
+signal
+sys
+time
+typing

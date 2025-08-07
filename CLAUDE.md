@@ -47,16 +47,36 @@ The project consists of two main Python files:
 
 ## Running the Server
 
-The server is designed to run with `uv` (though not currently available in this environment):
+### Local Usage (stdio transport)
 
+**Basic Usage (No RBAC)**:
 ```bash
-uv run --with fastmcp python3 apstra_mcp.py -f apstra_config.json
+python3 apstra_mcp.py -t stdio -f apstra_config.json
 ```
 
-Alternative approach using pip:
+**With RBAC (Environment Variables)**:
 ```bash
-pip install fastmcp httpx
-python3 apstra_mcp.py -f apstra_config.json
+# Set user-specific credentials
+export APSTRA_USERNAME="john@company.com"
+export APSTRA_PASSWORD="user_password"
+export APSTRA_SERVER="apstra.company.com"
+export APSTRA_PORT="443"
+
+python3 apstra_mcp.py -t stdio
+```
+
+### Remote Deployment (SSE/HTTP transport)
+
+```bash
+# Start HTTP server with session-based authentication
+python3 apstra_mcp.py -t sse -H 0.0.0.0 -p 8080 -f apstra_config.json
+```
+
+### Docker Deployment
+
+```bash
+# Build and run with Docker Compose
+docker-compose up -d
 ```
 
 ## Configuration
@@ -74,7 +94,39 @@ Before running, create a configuration file (see `apstra_config_sample.json` for
 
 ## Claude Desktop Integration
 
-The `claude_desktop_config.json` shows how this MCP server integrates with Claude Desktop. Note that the file paths need to be updated to match the actual locations of `apstra_mcp.py` and your config file.
+### Basic Integration (No RBAC)
+```json
+{
+  "mcpServers": {
+    "apstra": {
+      "command": "python3",
+      "args": ["/path/to/apstra_mcp.py", "-t", "stdio", "-f", "/path/to/apstra_config.json"]
+    }
+  }
+}
+```
+
+### RBAC Integration (Per-User Authentication)
+```json
+{
+  "mcpServers": {
+    "apstra": {
+      "command": "python3",
+      "args": ["/path/to/apstra_mcp.py", "-t", "stdio"],
+      "env": {
+        "APSTRA_USERNAME": "your-username@company.com",
+        "APSTRA_PASSWORD": "your-password",
+        "APSTRA_SERVER": "your-apstra-server.com",
+        "APSTRA_PORT": "443"
+      }
+    }
+  }
+}
+```
+
+**Note**: Each user should have their own Claude Desktop configuration with their specific Apstra credentials for true RBAC enforcement.
+
+See `claude_desktop_config_examples.json` for complete configuration examples.
 
 ## Dependencies
 
@@ -88,32 +140,37 @@ The `claude_desktop_config.json` shows how this MCP server integrates with Claud
 - Credentials are stored in JSON configuration files
 - Consider using encrypted credential storage for production use
 
-## Recent Improvements (Latest Session)
+## Recent Improvements (Current Implementation)
 
-### New Tools Added
-- **get_nodes()**: Get all nodes in a blueprint with proper API response handling
-- **get_node_id()**: Get specific node details by ID
-- **get_protocol_sessions()**: Monitor BGP and other protocol sessions
+### Dual Transport Architecture
+- **stdio Transport**: Local usage with Claude Desktop, backward compatible
+- **SSE/HTTP Transport**: Remote deployment with HTTP/server-sent events
+- **Unified Codebase**: Single script handles both transport modes via `-t` flag
+- **Docker Support**: Complete containerization following Juniper patterns
 
-### Enhanced Remote Gateway Management
-- **Flexible Parameters**: Made 5 parameters optional in `create_remote_gw()` with sensible defaults
-- **Improved Usability**: Required parameters first, optional parameters with defaults
-- **Smart Payload Construction**: Conditionally includes optional fields only when provided
+### RBAC Authentication System
+- **stdio RBAC**: Environment variable-based per-user authentication
+- **SSE RBAC**: Session-based authentication with credential validation
+- **True RBAC**: Each user authenticates with actual Apstra credentials
+- **Audit Trail**: All API calls logged in Apstra with real user identity
 
-### Code Organization Improvements
-- **Logical Grouping**: Organized all 17 tools into Query, Management, and Create groups
-- **Consistent Ordering**: Functions in `apstra_core.py` match the order in `apstra_mcp.py`
-- **Better Documentation**: Enhanced docstrings with parameter descriptions and examples
+### Session Management (SSE Transport)
+- **Authentication Flow**: Login → Session Token → Authenticated API Calls → Logout
+- **Automatic Validation**: Token validation and expiration handling
+- **Secure Storage**: User credentials stored securely on server side
+- **Session Cleanup**: Automatic cleanup of expired sessions
 
-### Error Handling Enhancements
-- **Consistent Patterns**: All functions use `response.raise_for_status()` for HTTP error handling
-- **Proper Exception Propagation**: Replaced `sys.exit()` calls with proper exception raising
-- **JSON Response Handling**: Fixed API response structure handling for different endpoints
+### Authentication Tools
+- **login()**: Authenticate with Apstra and create session (SSE only)
+- **logout()**: Invalidate user session (SSE only)
+- **session_info()**: Show current authentication mode and user information
+- **health()**: Server health monitoring with session statistics
 
-### Parameter Type Corrections
-- **Data Type Alignment**: Fixed parameter types to match API requirements (int, str, list)
-- **Optional Parameter Handling**: Proper default value assignment and conditional payload inclusion
-- **API Response Structure**: Corrected response parsing for different endpoint patterns
+### Docker Deployment
+- **Production Ready**: Dockerfile, docker-compose.yml, nginx reverse proxy
+- **SSL Termination**: HTTPS support with certificate management
+- **Health Monitoring**: Built-in health checks for container orchestration
+- **Security**: Non-root user, restrictive permissions, security headers
 
 ## Development Best Practices
 

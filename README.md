@@ -85,6 +85,8 @@ Session-based authentication with real Apstra credentials:
 2. Use session token with any tool
 3. All actions logged in Apstra with real user identity
 
+**Example Implementation**: See the [Streamlit Chat App](https://github.com/vignitin/streamlit-chat-app) for a complete web-based interface that demonstrates HTTP transport usage with session authentication.
+
 ## 🐳 Docker Deployment
 
 ```bash
@@ -119,6 +121,10 @@ curl -X POST http://server:8080/tools/call \
 - **[CLAUDE.md](CLAUDE.md)** - Technical implementation details and development guide
 - **[TESTING.md](TESTING.md)** - Test framework documentation
 - **[claude_desktop_config_examples.json](claude_desktop_config_examples.json)** - Configuration examples
+
+## 🔗 Related Projects
+
+- **[Streamlit Chat App](https://github.com/vignitin/streamlit-chat-app)** - Web-based chat interface that integrates with this MCP server via HTTP transport
 
 ## 🛠️ Command Line Options
 

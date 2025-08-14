@@ -19,6 +19,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY apstra_mcp.py .
 COPY apstra_core.py .
 COPY session_manager.py .
+COPY logger_config.py .
 COPY apstra_config_sample.json .
 
 # Create non-root user for security

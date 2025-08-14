@@ -1,6 +1,6 @@
 {
-  "aos_server": "your-apstra-server-ip-or-hostname",
-  "aos_port": "your-apstra-server-port",
+  "server": "your-apstra-server-ip-or-hostname",
+  "port": "your-apstra-server-port",
   "username": "your-username",
   "password": "your-password"
 }

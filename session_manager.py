@@ -10,6 +10,9 @@ import json
 import sys
 from typing import Dict, Optional, Tuple
 import apstra_core
+from logger_config import setup_logger
+
+logger = setup_logger(__name__)
 
 
 class SessionManager:
@@ -31,16 +34,16 @@ class SessionManager:
         """Check if session has expired"""
         return time.time() - session_info['last_accessed'] > self.session_timeout
     
-    def authenticate_user(self, apstra_username: str, apstra_password: str, 
-                         apstra_server: str, apstra_port: str = "443") -> Tuple[bool, str, Optional[str]]:
+    def authenticate_user(self, username: str, password: str, 
+                         server: str, port: str = "443") -> Tuple[bool, str, Optional[str]]:
         """
         Authenticate user against Apstra server
         
         Args:
-            apstra_username: Apstra username
-            apstra_password: Apstra password  
-            apstra_server: Apstra server hostname/IP
-            apstra_port: Apstra server port
+            username: Apstra username
+            password: Apstra password  
+            server: Apstra server hostname/IP
+            port: Apstra server port
             
         Returns:
             Tuple of (success, message, session_token)
@@ -48,37 +51,37 @@ class SessionManager:
         try:
             # Prepare user credentials for validation
             user_credentials = {
-                'apstra_username': apstra_username,
-                'apstra_password': apstra_password,
-                'apstra_server': apstra_server,
-                'apstra_port': apstra_port
+                'username': username,
+                'password': password,
+                'server': server,
+                'port': port
             }
             
             # Validate credentials by attempting authentication with Apstra
-            print(f"DEBUG: Validating credentials for {apstra_username} against {apstra_server}:{apstra_port}", file=sys.stderr)
-            headers, server = apstra_core.auth(user_credentials=user_credentials)
+            logger.debug(f"Validating credentials for {username} against {server}:{port}")
+            headers, auth_server_with_port = apstra_core.auth(user_credentials=user_credentials)
             
             # If we get here, authentication was successful
             session_token = self._generate_session_token()
             
-            # Store session with user credentials
+            # Store session with user credentials (keep original server/port separate for future use)
             self.sessions[session_token] = {
-                'apstra_username': apstra_username,
-                'apstra_password': apstra_password,
-                'apstra_server': apstra_server,
-                'apstra_port': apstra_port,
+                'username': username,
+                'password': password,
+                'server': server,  # Original server without port
+                'port': port,      # Original port
                 'created_at': time.time(),
                 'last_accessed': time.time(),
                 'auth_headers': headers,
-                'server': server
+                'auth_server_with_port': auth_server_with_port  # Combined server:port from auth
             }
             
-            print(f"DEBUG: Session created for {apstra_username}: {session_token[:16]}...", file=sys.stderr)
+            logger.debug(f"Session created for {username}: {session_token[:16]}...")
             return True, "Authentication successful", session_token
             
         except Exception as e:
             error_msg = f"Authentication failed: {str(e)}"
-            print(f"DEBUG: {error_msg}", file=sys.stderr)
+            logger.debug(error_msg)
             return False, error_msg, None
     
     def validate_session(self, session_token: str) -> Optional[Dict]:
@@ -98,7 +101,7 @@ class SessionManager:
         
         # Check if session has expired
         if self._is_session_expired(session_info):
-            print(f"DEBUG: Session expired for {session_info['apstra_username']}: {session_token[:16]}...", file=sys.stderr)
+            logger.debug(f"Session expired for {session_info['username']}: {session_token[:16]}...")
             del self.sessions[session_token]
             return None
         
@@ -107,10 +110,10 @@ class SessionManager:
         
         # Return user credentials for Apstra API calls
         return {
-            'apstra_username': session_info['apstra_username'],
-            'apstra_password': session_info['apstra_password'],
-            'apstra_server': session_info['apstra_server'],
-            'apstra_port': session_info['apstra_port']
+            'username': session_info['username'],
+            'password': session_info['password'],
+            'server': session_info['server'],
+            'port': session_info['port']
         }
     
     def logout_session(self, session_token: str) -> bool:
@@ -124,9 +127,9 @@ class SessionManager:
             True if session was found and removed, False otherwise
         """
         if session_token in self.sessions:
-            username = self.sessions[session_token]['apstra_username']
+            username = self.sessions[session_token]['username']
             del self.sessions[session_token]
-            print(f"DEBUG: Session logged out for {username}: {session_token[:16]}...", file=sys.stderr)
+            logger.debug(f"Session logged out for {username}: {session_token[:16]}...")
             return True
         return False
     
@@ -146,9 +149,9 @@ class SessionManager:
         
         count = 0
         for token in expired_sessions:
-            username = self.sessions[token]['apstra_username']
+            username = self.sessions[token]['username']
             del self.sessions[token]
-            print(f"DEBUG: Cleaned up expired session for {username}: {token[:16]}...", file=sys.stderr)
+            logger.debug(f"Cleaned up expired session for {username}: {token[:16]}...")
             count += 1
         
         return count
@@ -172,9 +175,9 @@ class SessionManager:
             return None
         
         return {
-            'apstra_username': session['apstra_username'],
-            'apstra_server': session['apstra_server'],
-            'apstra_port': session['apstra_port'],
+            'username': session['username'],
+            'server': session['server'],
+            'port': session['port'],
             'created_at': session['created_at'],
             'last_accessed': session['last_accessed'],
             'expires_in': self.session_timeout - (time.time() - session['last_accessed'])
@@ -193,8 +196,8 @@ class SessionManager:
         for token, session_info in self.sessions.items():
             if not self._is_session_expired(session_info):
                 active_sessions[token[:16] + "..."] = {
-                    'apstra_username': session_info['apstra_username'],
-                    'apstra_server': session_info['apstra_server'],
+                    'username': session_info['username'],
+                    'server': session_info['server'],
                     'created_at': session_info['created_at'],
                     'last_accessed': session_info['last_accessed'],
                     'expires_in': self.session_timeout - (current_time - session_info['last_accessed'])

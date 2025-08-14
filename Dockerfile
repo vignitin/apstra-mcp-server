@@ -26,12 +26,12 @@ RUN groupadd -r apstra && useradd -r -g apstra apstra
 RUN chown -R apstra:apstra /app
 USER apstra
 
-# Expose default port
+# Expose port for MCP server
 EXPOSE 8080
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+# Health check for HTTP transport
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
     CMD curl -f http://localhost:8080/health || exit 1
 
-# Default command - can be overridden
-CMD ["python3", "apstra_mcp.py", "-t", "sse", "-H", "0.0.0.0", "-p", "8080"]
+# Default command - can be overridden  
+CMD ["python3", "apstra_mcp.py", "-t", "http", "-H", "0.0.0.0", "-p", "8080"]

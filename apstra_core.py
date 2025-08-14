@@ -5,6 +5,10 @@ import httpx
 import sys
 import json
 import os
+from logger_config import setup_logger
+
+# Set up logger
+logger = setup_logger(__name__, os.environ.get('LOG_LEVEL', 'INFO'))
 
 # Helper function for formatting guidelines
 def get_formatting_guidelines():
@@ -85,8 +89,8 @@ This formatting ensures consistent, scannable, and actionable network infrastruc
 """
 
 # Global configuration variables
-aos_server = ''
-aos_port = ''
+server = ''
+port = ''
 username = ''
 password = ''
 
@@ -108,19 +112,20 @@ def load_config(config_file=None):
         with open(config_file, 'r') as f:
             return json.load(f)
     except FileNotFoundError:
-        print(f"Config file not found: {config_file}", file=sys.stderr)
-        print(f"Please create a config file based on apstra_config_sample.json", file=sys.stderr)
+        logger.error(f"Config file not found: {config_file}")
+        logger.error(f"Please create a config file based on apstra_config_sample.json")
         return {}
     except json.JSONDecodeError:
-        print(f"Invalid JSON in config file: {config_file}", file=sys.stderr)
+        logger.error(f"Invalid JSON in config file: {config_file}")
         return {}
 
 def initialize_config(config_file=None):
     """Initialize global configuration variables from specified config file"""
-    global aos_server, aos_port, username, password
+    global server, port, username, password
     config = load_config(config_file)
-    aos_server = config.get('aos_server', '')
-    aos_port = config.get('aos_port', '')
+    # Support both generic and legacy field names for backward compatibility
+    server = config.get('server') or config.get('aos_server', '')
+    port = config.get('port') or config.get('aos_port', '')
     username = config.get('username', '')
     password = config.get('password', '')
 
@@ -146,10 +151,11 @@ def auth(server_url=None, user=None, passwd=None, user_credentials=None):
     """
     # Use user_credentials if provided, otherwise fall back to parameters or global config
     if user_credentials:
-        auth_user = user_credentials.get('apstra_username') or user or username
-        auth_pass = user_credentials.get('apstra_password') or passwd or password
-        server_override = user_credentials.get('apstra_server')
-        port_override = user_credentials.get('apstra_port')
+        # Support both generic and legacy field names
+        auth_user = user_credentials.get('username') or user_credentials.get('apstra_username') or user or username
+        auth_pass = user_credentials.get('password') or user_credentials.get('apstra_password') or passwd or password
+        server_override = user_credentials.get('server') or user_credentials.get('apstra_server')
+        port_override = user_credentials.get('port') or user_credentials.get('apstra_port')
     else:
         auth_user = user or username
         auth_pass = passwd or password
@@ -169,13 +175,15 @@ def auth(server_url=None, user=None, passwd=None, user_credentials=None):
             server = f"{server_override}:443"
     else:
         # Use global config (fallback for backward compatibility)
-        if ':' in aos_server:
-            server = aos_server
+        global_server = globals().get('server', '')
+        global_port = globals().get('port', '')
+        if ':' in global_server:
+            server = global_server
         else:
-            if aos_port:
-                server = f"{aos_server}:{aos_port}"
+            if global_port:
+                server = f"{global_server}:{global_port}"
             else:
-                server = f"{aos_server}:443"
+                server = f"{global_server}:443"
     try:
         url_login = f'https://{server}/api/user/login'
         headers_init = { 'Content-Type':"application/json", 'Cache-Control':"no-cache" }
@@ -187,7 +195,7 @@ def auth(server_url=None, user=None, passwd=None, user_credentials=None):
         headers = { 'AuthToken':auth_token, 'Content-Type':"application/json", 'Cache-Control':"no-cache" }
         return(headers, server)
     except Exception as e:
-        print(f"An unexpected error occurred: {e}", file=sys.stderr)
+        logger.error(f"An unexpected error occurred: {e}")
         raise  # Re-raise the exception instead of returning None
 
 
@@ -202,36 +210,8 @@ def get_bp(server_url=None, user_credentials=None):
         return json.dumps(response.json()['items'], indent=2)
     except Exception as e:
         error_msg = f"An unexpected error occurred: {e}"
-        print(error_msg, file=sys.stderr)
+        logger.error(error_msg)
         return error_msg
-
-# # Get node details
-# def get_nodes(blueprint_id, server_url=None):
-#     """Gets node information for a blueprint"""
-#     try:
-#         headers, server = auth(server_url)
-#         url = f'https://{server}/api/blueprints/{blueprint_id}/nodes'
-#         response = httpx.get(url, headers=headers, verify=False)
-#         response.raise_for_status()
-#         return json.dumps(response.json()['nodes'], indent=2)
-#     except Exception as e:
-#         error_msg = f"An unexpected error occurred: {e}"
-#         print(error_msg, file=sys.stderr)
-#         return error_msg
-
-# # Get node ID details
-# def get_node_id(blueprint_id, node_id, server_url=None):
-#     """Gets specific node information by ID for a blueprint"""
-#     try:
-#         headers, server = auth(server_url)
-#         url = f'https://{server}/api/blueprints/{blueprint_id}/nodes/{node_id}'
-#         response = httpx.get(url, headers=headers, verify=False)
-#         response.raise_for_status()
-#         return json.dumps(response.json(), indent=2)
-#     except Exception as e:
-#         error_msg = f"An unexpected error occurred: {e}"
-#         print(error_msg, file=sys.stderr)
-#         return error_msg
 
 # Get racks
 def get_racks(blueprint_id, server_url=None, user_credentials=None):
@@ -244,7 +224,7 @@ def get_racks(blueprint_id, server_url=None, user_credentials=None):
         return json.dumps(response.json()['items'], indent=2)
     except Exception as e:
         error_msg = f"An unexpected error occurred: {e}"
-        print(error_msg, file=sys.stderr)
+        logger.error(error_msg)
         return error_msg
 
 # Get routing zones
@@ -258,7 +238,7 @@ def get_rz(blueprint_id, server_url=None, user_credentials=None):
         return json.dumps(response.json(), indent=2)
     except Exception as e:
         error_msg = f"An unexpected error occurred: {e}"
-        print(error_msg, file=sys.stderr)
+        logger.error(error_msg)
         return error_msg
 
 # Get virtual networks
@@ -272,7 +252,7 @@ def get_vn(blueprint_id, server_url=None, user_credentials=None):
         return json.dumps(response.json(), indent=2)
     except Exception as e:
         error_msg = f"An unexpected error occurred: {e}"
-        print(error_msg, file=sys.stderr)
+        logger.error(error_msg)
         return error_msg
 
 # Get system info
@@ -286,7 +266,7 @@ def get_system_info(blueprint_id, server_url=None, user_credentials=None):
         return json.dumps(response.json(), indent=2)
     except Exception as e:
         error_msg = f"An unexpected error occurred: {e}"
-        print(error_msg, file=sys.stderr)
+        logger.error(error_msg)
         return error_msg
 
 # Check staging version through diff-status
@@ -300,7 +280,7 @@ def get_diff_status(blueprint_id, server_url=None, user_credentials=None):
         return json.dumps(response.json(), indent=2)
     except Exception as e:
         error_msg = f"An unexpected error occurred: {e}"
-        print(error_msg, file=sys.stderr)
+        logger.error(error_msg)
         return error_msg
 
 # Deploy config
@@ -315,7 +295,7 @@ def deploy(blueprint_id, description, staging_version, server_url=None, user_cre
         return json.dumps(response.json(), indent=2)
     except Exception as e:
         error_msg = f"An unexpected error occurred: {e}"
-        print(error_msg, file=sys.stderr)
+        logger.error(error_msg)
         return error_msg
 
 # Get templates
@@ -329,7 +309,7 @@ def get_templates(server_url=None, user_credentials=None):
         return json.dumps(response.json(), indent=2)
     except Exception as e:
         error_msg = f"An unexpected error occurred: {e}"
-        print(error_msg, file=sys.stderr)
+        logger.error(error_msg)
         return error_msg
 
 
@@ -344,7 +324,7 @@ def delete_blueprint(blueprint_id, server_url=None, user_credentials=None):
         return response.text if response.text else "Blueprint deleted successfully"
     except Exception as e:
         error_msg = f"An unexpected error occurred: {e}"
-        print(error_msg, file=sys.stderr)
+        logger.error(error_msg)
         return error_msg
 
 # Get anomalies
@@ -358,7 +338,7 @@ def get_anomalies(blueprint_id, server_url=None, user_credentials=None):
         return json.dumps(response.json(), indent=2)
     except Exception as e:
         error_msg = f"An unexpected error occurred: {e}"
-        print(error_msg, file=sys.stderr)
+        logger.error(error_msg)
         return error_msg
 
 # Get remote gateways
@@ -372,7 +352,7 @@ def get_remote_gw(blueprint_id, server_url=None, user_credentials=None):
         return json.dumps(response.json(), indent=2)
     except Exception as e:
         error_msg = f"An unexpected error occurred: {e}"
-        print(error_msg, file=sys.stderr)
+        logger.error(error_msg)
         return error_msg
 
 # Get protocol sessions
@@ -386,22 +366,10 @@ def get_protocol_sessions(blueprint_id, server_url=None, user_credentials=None):
         return json.dumps(response.json(), indent=2)
     except Exception as e:
         error_msg = f"An unexpected error occurred: {e}"
-        print(error_msg, file=sys.stderr)
+        logger.error(error_msg)
         return error_msg
 
 # # Get system info
-# def get_systems(server_url=None):
-#     """Return a list of all devices in Apstra and their key facts"""
-#     try:
-#         headers, server = auth(server_url)
-#         url = f'https://{server}/api/systems'
-#         response = httpx.get(url, headers=headers, verify=False)
-#         response.raise_for_status()
-#         return json.dumps(response.json(), indent=2)
-#     except Exception as e:
-#         error_msg = f"An unexpected error occurred: {e}"
-#         print(error_msg, file=sys.stderr)
-#         return error_msg
 
 # CREATE FUNCTIONS - All create operations grouped together
 
@@ -412,12 +380,12 @@ def create_vn(blueprint_id, security_zone_id, vn_name, server_url=None, user_cre
         headers, server = auth(server_url, user_credentials=user_credentials)
         url = f'https://{server}/api/blueprints/{blueprint_id}/virtual-networks'
         data = f'{{"label": "{vn_name}","vn_type":"vxlan","security_zone_id":"{security_zone_id}"}}'
-        response = httpx.post(url, data=data, headers=headers, verify=False)
+        response = httpx.post(url, data=data, headers=headers, verify=False, timeout=30.0)
         response.raise_for_status()
         return json.dumps(response.json(), indent=2)
     except Exception as e:
         error_msg = f"An unexpected error occurred: {e}"
-        print(error_msg, file=sys.stderr)
+        logger.error(error_msg)
         return error_msg
 
 # Create remote gateways
@@ -447,12 +415,12 @@ def create_remote_gw(blueprint_id, gw_ip, gw_asn, gw_name, local_gw_nodes, evpn_
         payload["holdtime_timer"] = holdtime_timer
         payload["ttl"] = ttl
         data = json.dumps(payload)
-        response = httpx.post(url, data=data, headers=headers, verify=False)
+        response = httpx.post(url, data=data, headers=headers, verify=False, timeout=30.0)
         response.raise_for_status()
         return json.dumps(response.json(), indent=2)
     except Exception as e:
         error_msg = f"An unexpected error occurred: {e}"
-        print(error_msg, file=sys.stderr)
+        logger.error(error_msg)
         return error_msg
 
 # Create datacenter blueprint
@@ -462,12 +430,12 @@ def create_datacenter_blueprint(blueprint_name, template_id, server_url=None, us
         headers, server = auth(server_url, user_credentials=user_credentials)
         url = f'https://{server}/api/blueprints'
         data = f'{{"design":"two_stage_l3clos","init_type":"template_reference","template_id":"{template_id}","label":"{blueprint_name}"}}'
-        response = httpx.post(url, data=data, headers=headers, verify=False)
+        response = httpx.post(url, data=data, headers=headers, verify=False, timeout=30.0)
         response.raise_for_status()
         return json.dumps(response.json(), indent=2)
     except Exception as e:
         error_msg = f"An unexpected error occurred: {e}"
-        print(error_msg, file=sys.stderr)
+        logger.error(error_msg)
         return error_msg
 
 # Create freeform blueprint
@@ -477,11 +445,11 @@ def create_freeform_blueprint(blueprint_name, server_url=None, user_credentials=
         headers, server = auth(server_url, user_credentials=user_credentials)
         url = f'https://{server}/api/blueprints'
         data = f'{{"design":"freeform","init_type":"none","label":"{blueprint_name}"}}'
-        response = httpx.post(url, data=data, headers=headers, verify=False)
+        response = httpx.post(url, data=data, headers=headers, verify=False, timeout=30.0)
         response.raise_for_status()
         return json.dumps(response.json(), indent=2)
     except Exception as e:
         error_msg = f"An unexpected error occurred: {e}"
-        print(error_msg, file=sys.stderr)
+        logger.error(error_msg)
         return error_msg
 

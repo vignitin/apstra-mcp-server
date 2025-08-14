@@ -1,6 +1,5 @@
-version: '3.8'
-
 services:
+  # Apstra MCP Server - supports both stdio and HTTP transports
   apstra-mcp-server:
     build: .
     container_name: apstra-mcp-server
@@ -10,8 +9,8 @@ services:
       # Mount config file
       - ./apstra_config.json:/app/apstra_config.json:ro
     environment:
-      # Optional environment variables
       - PYTHONUNBUFFERED=1
+    command: ["python3", "apstra_mcp.py", "-t", "http", "-H", "0.0.0.0"]
     restart: unless-stopped
     networks:
       - apstra-network
@@ -20,9 +19,9 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
+      start_period: 10s
 
-  # Optional: Add a reverse proxy for SSL termination
+  # Optional: Nginx reverse proxy for SSL termination
   nginx:
     image: nginx:alpine
     container_name: apstra-mcp-nginx

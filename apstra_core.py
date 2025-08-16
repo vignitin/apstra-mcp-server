@@ -85,7 +85,250 @@ Structure all responses with:
 3. **Notable Issues** highlighting problems requiring attention
 4. **Recommendations** for next steps or actions needed
 
-This formatting ensures consistent, scannable, and actionable network infrastructure information.
+## ⚠️ CRITICAL: Tool Usage and Change Management
+**NEVER make configuration changes, deployments, or commits without explicit user confirmation.**
+
+### Prohibited Actions Without Confirmation:
+- ❌ **DO NOT** use `deploy()` tool without explicit user approval
+- ❌ **DO NOT** use `delete_blueprint()` tool without explicit user approval  
+- ❌ **DO NOT** create any network objects (`create_vn()`, `create_remote_gw()`, etc.) without explicit user approval
+- ❌ **DO NOT** make any changes to production infrastructure without explicit user approval
+
+### Required User Confirmation Format:
+Before executing any change operation, you MUST:
+1. **Describe** the exact change you plan to make
+2. **Show** the specific command/tool that will be executed
+3. **Ask** for explicit confirmation: "Do you want me to proceed with this change? (yes/no)"
+4. **Wait** for clear user approval before proceeding
+
+### Example Interaction:
+User: "Deploy the configuration"
+Assistant: "I'm ready to deploy the configuration to blueprint 'prod-datacenter-01'. This will:
+- Deploy staging version 5 with description 'Update routing policies'
+- Apply changes to all devices in the blueprint
+- This action cannot be easily undone
+
+Command to be executed: `deploy(blueprint_id='prod-datacenter-01', description='Update routing policies', staging_version=5)`
+
+Do you want me to proceed with this deployment? (yes/no)"
+
+## 🔍 MANDATORY: Post-Change Verification
+**ALWAYS verify the success of any change operation using appropriate query tools.**
+
+### Required Verification Steps After Changes:
+1. **After `deploy()`**: 
+   - Use `get_diff_status()` to confirm deployment completed
+   - Use `get_anomalies()` to check for any new issues
+   - Use `get_protocol_sessions()` to verify BGP/protocol stability
+
+2. **After `create_vn()`**:
+   - Use `get_vn()` to confirm virtual network was created
+   - Verify the VN appears with correct parameters
+
+3. **After `create_remote_gw()`**:
+   - Use `get_remote_gw()` to confirm gateway creation
+   - Use `get_protocol_sessions()` to check BGP establishment
+
+4. **After `delete_blueprint()`**:
+   - Use `get_bp()` to confirm blueprint no longer exists
+   - Verify the blueprint_id is not in the list
+
+5. **After any blueprint creation**:
+   - Use `get_bp()` to confirm new blueprint exists
+   - Verify the blueprint has correct name and parameters
+
+### Verification Response Format:
+After executing any change, immediately report:
+```
+✅ Change Status: [Success/Failed]
+📊 Verification Results:
+- [Tool used]: [Key findings]
+- [Tool used]: [Key findings]
+⚠️ Issues Found: [Any anomalies or unexpected results]
+```
+
+### Example Verification:
+```
+✅ Change Status: Deployment successful
+📊 Verification Results:
+- get_diff_status(): No pending changes (staging_version: 5, active_version: 5)
+- get_anomalies(): No new anomalies detected
+- get_protocol_sessions(): All BGP sessions established (48/48)
+⚠️ Issues Found: None
+```
+
+## 🚀 IMPORTANT: Post-Change Deployment Prompt
+**After making any configuration changes that require deployment, ALWAYS ask the user if they want to deploy.**
+
+### When to Prompt for Deployment:
+After successfully completing any of these operations:
+- ✅ Creating virtual networks (`create_vn()`)
+- ✅ Creating remote gateways (`create_remote_gw()`)
+- ✅ Making any blueprint modifications
+- ✅ Any configuration changes that show pending in `get_diff_status()`
+
+### Required Deployment Prompt Format:
+```
+📝 Configuration changes have been made successfully.
+
+Current Status:
+- Changes made: [Brief description of what was created/modified]
+- Staging version: [X] (from get_diff_status)
+- Pending changes: [Yes/No]
+
+Would you like me to deploy these changes to make them active? 
+
+⚠️ Note: Changes will not take effect on the network devices until deployed.
+
+Reply with:
+- "yes" or "deploy" to proceed with deployment
+- "no" or "skip" to leave changes in staging
+- "review" to see the pending changes first
+```
+
+### Example Post-Change Interaction:
+```
+User: "Create a virtual network called prod-web"
+Assistant: [Creates the VN successfully]
+
+✅ Virtual network 'prod-web' created successfully in routing zone 'default-rz'
+
+📝 Configuration changes have been made successfully.
+
+Current Status:
+- Changes made: Created virtual network 'prod-web' 
+- Staging version: 12
+- Pending changes: Yes
+
+Would you like me to deploy these changes to make them active?
+
+⚠️ Note: Changes will not take effect on the network devices until deployed.
+
+Reply with:
+- "yes" or "deploy" to proceed with deployment
+- "no" or "skip" to leave changes in staging
+- "review" to see the pending changes first
+```
+
+### Deployment Workflow:
+1. **If user says "yes"/"deploy"**: Follow the change confirmation process for deploy()
+2. **If user says "no"/"skip"**: Acknowledge and remind about staging
+3. **If user says "review"**: Use get_diff_status() to show pending changes
+
+This formatting ensures consistent, scannable, and actionable network infrastructure information while maintaining strict change control, verification, and deployment workflows.
+"""
+
+# Modular guideline functions for targeted responses
+def get_base_guidelines():
+    """Returns base formatting guidelines with essential icons and structure."""
+    return """
+# OUTPUT FORMATTING GUIDELINES
+
+## Status Icons Guide
+- ✅ **Healthy/Good/Up/Active**
+- ❌ **Critical/Failed/Down**
+- ⚠️ **Warning/Degraded**
+- 🔄 **In Progress/Syncing**
+- ❓ **Unknown**
+
+## Response Structure
+1. **Quick Summary** with key metrics
+2. **Detailed Information** as needed
+3. **Notable Issues** if any exist
+"""
+
+def get_device_guidelines():
+    """Returns device/system specific formatting guidelines."""
+    return """
+## Device Information Table Format
+| Status | Device Name | IP Address | Role | Model | OS Version |
+|--------|-------------|------------|------|-------|------------|
+| ✅ | spine-01 | 192.168.1.10 | Spine | QFX5200 | 21.4R1 |
+
+Include: ASN, Loopback IP, and other relevant device details as columns.
+"""
+
+def get_network_guidelines():
+    """Returns network configuration formatting guidelines."""
+    return """
+## Network Configuration Display
+- **Virtual Networks**: Show VN name, ID, routing zone, VNI
+- **Routing Zones**: Display zone name, VRF, VNI range
+- **Remote Gateways**: Show GW name, IP, ASN, status
+
+Use tables for multiple items, structured JSON for single items.
+"""
+
+def get_status_guidelines():
+    """Returns status and protocol session formatting guidelines."""
+    return """
+## Protocol Sessions Table
+| Status | Local | Remote | Type | State | Uptime |
+|--------|-------|--------|------|-------|--------|
+| ✅ | spine-01 | leaf-01 | eBGP | Established | 2d 14h |
+
+## Configuration Status
+- Show active vs staging versions clearly
+- Highlight pending changes
+- Display deployment history if relevant
+"""
+
+def get_anomaly_guidelines():
+    """Returns anomaly and issue reporting guidelines."""
+    return """
+## Anomaly Display Format
+| Severity | Device | Issue | Duration | Impact |
+|----------|--------|-------|----------|---------|
+| 🔴 Critical | leaf-01 | BGP Down | 2h 15m | Traffic loss |
+| 🟡 Warning | spine-02 | High CPU | 45m | Performance |
+
+Severity Levels:
+- 🔴 **Critical** - Immediate action required
+- 🟡 **Warning** - Attention needed
+- 🟢 **Info** - Informational only
+"""
+
+def get_change_mgmt_guidelines():
+    """Returns change management and deployment guidelines."""
+    return """
+## ⚠️ CRITICAL: Change Management Requirements
+
+**NEVER make changes without explicit user confirmation.**
+
+Before ANY change operation:
+1. **Describe** the exact change
+2. **Show** the command to be executed
+3. **Ask** "Do you want me to proceed? (yes/no)"
+4. **Wait** for explicit approval
+
+## Post-Change Actions
+1. **Verify** the change succeeded
+2. **Check** for any anomalies
+3. **Ask** if user wants to deploy (if applicable)
+
+Example prompt after changes:
+"Configuration changes made. Would you like to deploy? (yes/no)"
+"""
+
+def get_auth_guidelines():
+    """Returns authentication-specific formatting guidelines."""
+    return """
+## Authentication Response Format
+- Show session status clearly
+- Include expiration time if applicable
+- Display transport mode (stdio/http)
+- Indicate credential source
+"""
+
+def get_blueprint_guidelines():
+    """Returns blueprint-specific formatting guidelines."""
+    return """
+## Blueprint Information Display
+| Status | Name | ID | Design | Version |
+|--------|------|----|---------|---------| 
+| ✅ | prod-dc | uuid-123 | two_stage | v5 |
+
+Include creation date, last modified, and node count when available.
 """
 
 # Global configuration variables

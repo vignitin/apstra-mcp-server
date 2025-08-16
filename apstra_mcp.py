@@ -163,7 +163,7 @@ def formatting_guidelines() -> str:
 def get_bp(server_url: Optional[str] = None, user_credentials: Optional[Dict[str, Any]] = None) -> str:
     """Get list of all blueprints"""
     data = apstra_core.get_bp(server_url, user_credentials)
-    guidelines = apstra_core.get_formatting_guidelines()
+    guidelines = apstra_core.get_base_guidelines() + apstra_core.get_blueprint_guidelines()
     return f"{guidelines}\n\n## Blueprint Data:\n{data}"
 
 
@@ -172,63 +172,63 @@ def get_bp(server_url: Optional[str] = None, user_credentials: Optional[Dict[str
 def get_racks(blueprint_id: str, server_url: Optional[str] = None, user_credentials: Optional[Dict[str, Any]] = None) -> str:
     """Get all racks in a blueprint"""
     data = apstra_core.get_racks(blueprint_id, server_url, user_credentials)
-    guidelines = apstra_core.get_formatting_guidelines()
+    guidelines = apstra_core.get_base_guidelines() + apstra_core.get_device_guidelines()
     return f"{guidelines}\n\n## Rack Data:\n{data}"
 
 @mcp.tool()
 def get_rz(blueprint_id: str, server_url: Optional[str] = None, user_credentials: Optional[Dict[str, Any]] = None) -> str:
     """Get all routing zones in a blueprint"""
     data = apstra_core.get_rz(blueprint_id, server_url, user_credentials)
-    guidelines = apstra_core.get_formatting_guidelines()
+    guidelines = apstra_core.get_base_guidelines() + apstra_core.get_network_guidelines()
     return f"{guidelines}\n\n## Routing Zones Data:\n{data}"
 
 @mcp.tool()
 def get_vn(blueprint_id: str, server_url: Optional[str] = None, user_credentials: Optional[Dict[str, Any]] = None) -> str:
     """Get virtual networks in a blueprint"""
     data = apstra_core.get_vn(blueprint_id, server_url, user_credentials)
-    guidelines = apstra_core.get_formatting_guidelines()
+    guidelines = apstra_core.get_base_guidelines() + apstra_core.get_network_guidelines()
     return f"{guidelines}\n\n## Virtual Networks Data:\n{data}"
 
 @mcp.tool()
 def get_remote_gw(blueprint_id: str, server_url: Optional[str] = None, user_credentials: Optional[Dict[str, Any]] = None) -> str:
     """Get all remote gateways in a blueprint"""
     data = apstra_core.get_remote_gw(blueprint_id, server_url, user_credentials)
-    guidelines = apstra_core.get_formatting_guidelines()
+    guidelines = apstra_core.get_base_guidelines() + apstra_core.get_network_guidelines()
     return f"{guidelines}\n\n## Remote Gateways Data:\n{data}"
 
 @mcp.tool()
 def get_system_info(blueprint_id: str, server_url: Optional[str] = None, user_credentials: Optional[Dict[str, Any]] = None) -> str:
     """Get systems (devices) in a blueprint"""
     data = apstra_core.get_system_info(blueprint_id, server_url, user_credentials)
-    guidelines = apstra_core.get_formatting_guidelines()
+    guidelines = apstra_core.get_base_guidelines() + apstra_core.get_device_guidelines()
     return f"{guidelines}\n\n## System Information Data:\n{data}"
 
 @mcp.tool()
 def get_anomalies(blueprint_id: str, server_url: Optional[str] = None, user_credentials: Optional[Dict[str, Any]] = None) -> str:
     """Get anomalies in a blueprint"""
     data = apstra_core.get_anomalies(blueprint_id, server_url, user_credentials)
-    guidelines = apstra_core.get_formatting_guidelines()
+    guidelines = apstra_core.get_base_guidelines() + apstra_core.get_anomaly_guidelines()
     return f"{guidelines}\n\n## Anomaly Data:\n{data}"
 
 @mcp.tool()
 def get_diff_status(blueprint_id: str, server_url: Optional[str] = None, user_credentials: Optional[Dict[str, Any]] = None) -> str:
     """Get configuration diff status for a blueprint"""
     data = apstra_core.get_diff_status(blueprint_id, server_url, user_credentials)
-    guidelines = apstra_core.get_formatting_guidelines()
+    guidelines = apstra_core.get_base_guidelines() + apstra_core.get_status_guidelines()
     return f"{guidelines}\n\n## Configuration Diff Status:\n{data}"
 
 @mcp.tool()
 def get_templates(server_url: Optional[str] = None, user_credentials: Optional[Dict[str, Any]] = None) -> str:
     """Get list of all available templates"""
     data = apstra_core.get_templates(server_url, user_credentials)
-    guidelines = apstra_core.get_formatting_guidelines()
+    guidelines = apstra_core.get_base_guidelines() + apstra_core.get_blueprint_guidelines()
     return f"{guidelines}\n\n## Templates Data:\n{data}"
 
 @mcp.tool()
 def get_protocol_sessions(blueprint_id: str, server_url: Optional[str] = None, user_credentials: Optional[Dict[str, Any]] = None) -> str:
     """Get protocol sessions in a blueprint"""
     data = apstra_core.get_protocol_sessions(blueprint_id, server_url, user_credentials)
-    guidelines = apstra_core.get_formatting_guidelines()
+    guidelines = apstra_core.get_base_guidelines() + apstra_core.get_status_guidelines()
     return f"{guidelines}\n\n## Protocol Sessions Data:\n{data}"
 
 # =============================================================================
@@ -238,12 +238,16 @@ def get_protocol_sessions(blueprint_id: str, server_url: Optional[str] = None, u
 @mcp.tool()
 def deploy(blueprint_id: str, description: str, staging_version: int, server_url: Optional[str] = None, user_credentials: Optional[Dict[str, Any]] = None) -> str:
     """Deploy blueprint configuration"""
-    return apstra_core.deploy(blueprint_id, description, staging_version, server_url, user_credentials)
+    data = apstra_core.deploy(blueprint_id, description, staging_version, server_url, user_credentials)
+    guidelines = apstra_core.get_base_guidelines() + apstra_core.get_change_mgmt_guidelines()
+    return f"{guidelines}\n\n## Deployment Result:\n{data}"
 
 @mcp.tool()
 def delete_blueprint(blueprint_id: str, server_url: Optional[str] = None, user_credentials: Optional[Dict[str, Any]] = None) -> str:
     """Delete a blueprint"""
-    return apstra_core.delete_blueprint(blueprint_id, server_url, user_credentials)
+    data = apstra_core.delete_blueprint(blueprint_id, server_url, user_credentials)
+    guidelines = apstra_core.get_base_guidelines() + apstra_core.get_change_mgmt_guidelines()
+    return f"{guidelines}\n\n## Deletion Result:\n{data}"
 
 # =============================================================================
 # MCP TOOL DEFINITIONS - CREATE OPERATIONS
@@ -252,22 +256,30 @@ def delete_blueprint(blueprint_id: str, server_url: Optional[str] = None, user_c
 @mcp.tool()
 def create_vn(blueprint_id: str, security_zone_id: str, vn_name: str, server_url: Optional[str] = None, user_credentials: Optional[Dict[str, Any]] = None) -> str:
     """Create a virtual network in a routing zone"""
-    return apstra_core.create_vn(blueprint_id, security_zone_id, vn_name, server_url, user_credentials)
+    data = apstra_core.create_vn(blueprint_id, security_zone_id, vn_name, server_url, user_credentials)
+    guidelines = apstra_core.get_base_guidelines() + apstra_core.get_change_mgmt_guidelines()
+    return f"{guidelines}\n\n## Virtual Network Creation Result:\n{data}"
 
 @mcp.tool()
 def create_remote_gw(blueprint_id: str, gw_ip: str, gw_asn: int, gw_name: str, local_gw_nodes: list, evpn_route_types: str = "all", password: Optional[str] = None, keepalive_timer: int = 10, evpn_interconnect_group_id: Optional[str] = None, holdtime_timer: int = 30, ttl: int = 30, server_url: Optional[str] = None, user_credentials: Optional[Dict[str, Any]] = None) -> str:
     """Create a remote EVPN gateway"""
-    return apstra_core.create_remote_gw(blueprint_id, gw_ip, gw_asn, gw_name, local_gw_nodes, evpn_route_types, password, keepalive_timer, evpn_interconnect_group_id, holdtime_timer, ttl, server_url, user_credentials)
+    data = apstra_core.create_remote_gw(blueprint_id, gw_ip, gw_asn, gw_name, local_gw_nodes, evpn_route_types, password, keepalive_timer, evpn_interconnect_group_id, holdtime_timer, ttl, server_url, user_credentials)
+    guidelines = apstra_core.get_base_guidelines() + apstra_core.get_change_mgmt_guidelines()
+    return f"{guidelines}\n\n## Remote Gateway Creation Result:\n{data}"
 
 @mcp.tool()
 def create_datacenter_blueprint(blueprint_name: str, template_id: str, server_url: Optional[str] = None, user_credentials: Optional[Dict[str, Any]] = None) -> str:
     """Create a new datacenter blueprint from a template"""
-    return apstra_core.create_datacenter_blueprint(blueprint_name, template_id, server_url, user_credentials)
+    data = apstra_core.create_datacenter_blueprint(blueprint_name, template_id, server_url, user_credentials)
+    guidelines = apstra_core.get_base_guidelines() + apstra_core.get_change_mgmt_guidelines()
+    return f"{guidelines}\n\n## Blueprint Creation Result:\n{data}"
 
 @mcp.tool()
 def create_freeform_blueprint(blueprint_name: str, server_url: Optional[str] = None, user_credentials: Optional[Dict[str, Any]] = None) -> str:
     """Create a new freeform blueprint"""
-    return apstra_core.create_freeform_blueprint(blueprint_name, server_url, user_credentials)
+    data = apstra_core.create_freeform_blueprint(blueprint_name, server_url, user_credentials)
+    guidelines = apstra_core.get_base_guidelines() + apstra_core.get_change_mgmt_guidelines()
+    return f"{guidelines}\n\n## Blueprint Creation Result:\n{data}"
 
 logger.info("All MCP tools registered")
 

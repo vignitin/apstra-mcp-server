@@ -24,7 +24,9 @@ cp apstra_config_sample.json apstra_config.json
 python3 apstra_mcp.py -t stdio -f apstra_config.json
 ```
 
-### Network Deployment (Streamable HTTP, using Docker)
+### Network Deployment (Streamable HTTP)
+
+#### Docker (Recommended)
 ```bash
 # Clone and configure
 git clone <this-repo>
@@ -36,6 +38,15 @@ cp apstra_config_sample.json apstra_config.json
 docker-compose up -d
 ```
 
+#### Direct Python
+```bash
+# Install dependencies
+pip install -r requirements.txt
+
+# Start streamable HTTP server
+python3 apstra_mcp.py -t streamable-http -H 0.0.0.0 -p 8080 -f apstra_config.json
+```
+
 ## Installation
 
 ### Prerequisites
@@ -45,7 +56,7 @@ docker-compose up -d
 
 ### Dependencies
 ```bash
-pip install fastmcp httpx
+pip install -r requirements.txt
 ```
 
 ## Available Tools (15 total)
@@ -90,7 +101,7 @@ pip install fastmcp httpx
 
 ## Claude Desktop Configuration
 
-Add to `~/.claude/claude_desktop_config.json`:
+Add to `claude_desktop_config.json`:
 
 ```json
 {

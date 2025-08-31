@@ -13,7 +13,7 @@ The project consists of two main Python files:
 ### `apstra_mcp.py` - MCP Server Interface
 - **FastMCP Server**: Built using the `fastmcp` framework with native transport support
 - **Transport Modes**: Supports stdio (secure) and streamable-http (with native FastMCP streaming)
-- **MCP Tool Definitions**: 17 MCP tools organized into logical groups
+- **MCP Tool Definitions**: 18 MCP tools organized into logical groups
 - **Native FastMCP Transport**: Uses FastMCP's built-in HTTP and SSE capabilities
 
 ### `apstra_core.py` - Core Functionality
@@ -28,7 +28,7 @@ The project consists of two main Python files:
 - **Health check**: Server status (`health()`)  
 - **Formatting**: Formatting guidelines (`formatting_guidelines()`)
 
-**Query Tools (9 tools):**
+**Query Tools (10 tools):**
 - **Blueprint management**: Get blueprint information (`get_bp()`)
 - **Infrastructure queries**: Get racks (`get_racks()`), routing zones (`get_rz()`)
 - **Network queries**: Get virtual networks (`get_vn()`), remote gateways (`get_remote_gw()`)

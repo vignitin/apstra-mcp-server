@@ -59,13 +59,13 @@ python3 apstra_mcp.py -t streamable-http -H 0.0.0.0 -p 8080 -f apstra_config.jso
 pip install -r requirements.txt
 ```
 
-## Available Tools (15 total)
+## Available Tools (18 total)
 
 ### Health & Status Tools (2 tools)
 - `health()` - Server health check and Apstra connectivity status
 - `formatting_guidelines()` - Get formatting guidelines for network data presentation
 
-### Query Tools (9 tools)
+### Query Tools (10 tools)
 - `get_bp()` - Get blueprint information
 - `get_racks(blueprint_id)` - Get rack information  
 - `get_rz(blueprint_id)` - Get routing zones

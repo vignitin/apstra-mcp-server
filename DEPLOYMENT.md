@@ -25,39 +25,11 @@ docker ps
 curl -H "Accept: text/event-stream" http://localhost:8080/mcp
 ```
 
-## Access Points
-
-| Service | URL | Description |
-|---------|-----|-------------|
-| HTTP API | `http://localhost:8080/mcp` | FastMCP streamable-http server |
-| Claude Desktop | Local via `uv` command | Uses stdio transport |
-
 ## Client Configuration
 
 ### Streamlit Chat App
 - Server URL: `http://host.docker.internal:8080/mcp`
 - Authentication: none
-
-### Claude Desktop
-Add to `~/.claude/claude_desktop_config.json`:
-```json
-{
-  "mcpServers": {
-    "Apstra MCP server": {
-      "command": "uv",
-      "args": [
-        "run",
-        "--with",
-        "fastmcp,httpx",
-        "python3",
-        "/path/to/apstra_mcp.py",
-        "-f",
-        "/path/to/apstra_config.json"
-      ]
-    }
-  }
-}
-```
 
 ## Troubleshooting
 

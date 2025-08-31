@@ -70,15 +70,8 @@ python3 apstra_mcp.py -t streamable-http -H 0.0.0.0 -p 8080 -f apstra_config.jso
 ### Docker Deployment
 
 ```bash
-# Secure stdio transport (no network ports)
-docker-compose --profile stdio up -d
-
-# HTTP streaming (network access)
-docker-compose --profile streaming up -d
-
-# HTTPS with nginx proxy (recommended for production)
-./generate-certs.sh
-docker-compose --profile streaming --profile with-nginx up -d
+# Start HTTP streaming server
+docker-compose up -d
 ```
 
 ## Configuration
@@ -166,16 +159,9 @@ python3 apstra_mcp.py -t stdio -f apstra_config.json
 python3 apstra_mcp.py -t streamable-http -H 0.0.0.0 -p 8080 -f apstra_config.json
 ```
 
-**Docker deployment options**:
+**Docker deployment**:
 ```bash
-# Stdio only (secure)
-docker-compose --profile stdio up -d
-
-# HTTP streaming
-docker-compose --profile streaming up -d
-
-# HTTPS with SSL
-docker-compose --profile streaming --profile with-nginx up -d
+docker-compose up -d
 ```
 
 ### API Response Handling

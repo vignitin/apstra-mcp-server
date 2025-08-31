@@ -14,7 +14,7 @@ A Model Context Protocol (MCP) server that provides tools for interacting with J
 
 ## Quick Start
 
-### Local Usage (Claude Desktop - Secure by default)
+### Local Usage (stdio)
 ```bash
 # Create config file
 cp apstra_config_sample.json apstra_config.json
@@ -24,16 +24,16 @@ cp apstra_config_sample.json apstra_config.json
 python3 apstra_mcp.py -t stdio -f apstra_config.json
 ```
 
-### Network Deployment (Streaming HTTP)
+### Network Deployment (Streamable HTTP, using Docker)
 ```bash
-# Streamable HTTP server with native FastMCP streaming
-python3 apstra_mcp.py -t streamable-http -H 0.0.0.0 -p 8080 -f apstra_config.json
+# Clone and configure
+git clone <this-repo>
+cd apstra-mcp-server
+cp apstra_config_sample.json apstra_config.json
+# Edit config with your Apstra details
 
-# Docker - secure by default
+# Start HTTP streaming server
 docker-compose up -d
-
-# Docker - with network access
-docker-compose --profile streaming up -d apstra-mcp-streaming
 ```
 
 ## Installation
@@ -48,7 +48,7 @@ docker-compose --profile streaming up -d apstra-mcp-streaming
 pip install fastmcp httpx
 ```
 
-## Available Tools (17 total)
+## Available Tools (15 total)
 
 ### Health & Status Tools (2 tools)
 - `health()` - Server health check and Apstra connectivity status
@@ -86,24 +86,32 @@ pip install fastmcp httpx
 ### streamable-http Transport
 - Network-accessible with native FastMCP streaming capabilities
 - Automatic SSE upgrades for real-time updates
-- HTTPS support with nginx reverse proxy and local certificates
-- Production-ready with security headers and rate limiting
+- Single container deployment
 
-## Docker Deployment
+## Claude Desktop Configuration
 
-```bash
-git clone <this-repo>
-cd apstra-mcp-server
-cp apstra_config_sample.json apstra_config.json
-# Edit config with your Apstra details
+Add to `~/.claude/claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "apstra": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--with",
+        "fastmcp,httpx",
+        "python3",
+        "/path/to/apstra_mcp.py",
+        "-f",
+        "/path/to/apstra_config.json"
+      ]
+    }
+  }
+}
 ```
 
-### Deployment Options
-
-```bash
-# HTTP streaming server (default)
-docker-compose up -d
-```
+Update the paths to match your installation directory.
 
 ## Usage Examples
 
@@ -118,29 +126,14 @@ The server exposes native FastMCP endpoints on `/mcp/*` with automatic SSE upgra
 
 ## Architecture
 
-### Native FastMCP Integration
-- Uses FastMCP's built-in transport system
-- Automatic streaming with Server-Sent Events
-- Bidirectional communication support
-- Long-running operation progress tracking
-
-### Simplified Authentication
-- Configuration-based credentials
-- Stateless operation
-- Direct Apstra API authentication
-
-### Container Architecture
-
-**Single Container Deployment:**
-- `apstra-mcp-streaming` - HTTP server on port 8080
-- Supports native FastMCP streamable-http transport
-- Automatic SSE upgrades for real-time updates
+- **FastMCP Framework**: Native transport system with automatic SSE streaming
+- **Config-based Authentication**: Simple stateless operation with direct Apstra API auth
+- **Single Container**: HTTP server on port 8080 with streamable-http transport
 
 ## Documentation
 
 - **[DEPLOYMENT.md](DEPLOYMENT.md)** - Complete deployment guide with examples
 - **[CLAUDE.md](CLAUDE.md)** - Technical implementation details and development guide
-- **[claude_desktop_config_examples.json](claude_desktop_config_examples.json)** - Configuration examples
 
 ## Command Line Options
 

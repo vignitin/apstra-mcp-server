@@ -8,37 +8,31 @@ This is a Python-based MCP (Model Context Protocol) server that provides tools f
 
 ## Architecture
 
-The project consists of three main Python files:
+The project consists of two main Python files:
 
 ### `apstra_mcp.py` - MCP Server Interface
-- **FastMCP Server**: Built using the `fastmcp` framework
-- **Transport Modes**: Supports stdio (Claude Desktop) and HTTP (Streamlit/API)
-- **MCP Tool Definitions**: 20 MCP tools organized into logical groups
-- **Conditional Imports**: FastAPI only loaded for HTTP transport
+- **FastMCP Server**: Built using the `fastmcp` framework with native transport support
+- **Transport Modes**: Supports stdio (secure) and streamable-http (with native FastMCP streaming)
+- **MCP Tool Definitions**: 17 MCP tools organized into logical groups
+- **Native FastMCP Transport**: Uses FastMCP's built-in HTTP and SSE capabilities
 
 ### `apstra_core.py` - Core Functionality
-- **Authentication Layer**: Handles token-based authentication with Apstra server  
+- **Authentication Layer**: Handles config-based authentication with Apstra server  
 - **API Wrappers**: Core functions that wrap Apstra REST API endpoints
 - **Error Handling**: Comprehensive error handling with proper exception propagation
 - **JSON Response Formatting**: Consistent JSON formatting for all responses
 
-### `session_manager.py` - Session Management (HTTP only)
-- **Session Authentication**: Validates credentials against Apstra
-- **Token Management**: Secure session token generation and validation
-- **Session Cleanup**: Automatic expiration of old sessions
-
 ### Tool Organization
 
-**Authentication Tools (4 tools):**
-- **Session management**: Login (`login()`), logout (`logout()`) - HTTP transport only
-- **Status**: Session info (`session_info()`), health check (`health()`)
+**Health & Status Tools (2 tools):**
+- **Health check**: Server status (`health()`)  
+- **Formatting**: Formatting guidelines (`formatting_guidelines()`)
 
-**Query Tools (12 tools):**
+**Query Tools (9 tools):**
 - **Blueprint management**: Get blueprint information (`get_bp()`)
-- **Node queries**: Get all nodes (`get_nodes()`) and specific node details (`get_node_id()`)
 - **Infrastructure queries**: Get racks (`get_racks()`), routing zones (`get_rz()`)
 - **Network queries**: Get virtual networks (`get_vn()`), remote gateways (`get_remote_gw()`)
-- **System queries**: Get systems/devices (`get_systems()`)
+- **System queries**: Get systems/devices (`get_system_info()`)
 - **Monitoring**: Get anomalies (`get_anomalies()`), protocol sessions (`get_protocol_sessions()`)
 - **Configuration queries**: Check diff status (`get_diff_status()`), get templates (`get_templates()`)
 
@@ -51,32 +45,40 @@ The project consists of three main Python files:
 
 ### Key Components
 
-- **Authentication function** (`auth()`): Manages API token retrieval and headers with flexible port configuration
+- **Native FastMCP Transport**: Uses FastMCP's built-in streamable-http with automatic SSE upgrades
+- **Config-based Authentication**: Simple authentication using configuration file credentials
 - **Remote Gateway Management**: Comprehensive EVPN remote gateway creation with optional parameters
 - **Flexible Configuration**: Support for various server:port configurations with 443 as default
 - **Consistent Error Handling**: All functions use `response.raise_for_status()` and proper exception handling
 
 ## Running the Server
 
-### Local Usage (stdio transport)
+### Local Usage (stdio transport - Secure by default)
 
 ```bash
 # For Claude Desktop - uses config file authentication
 python3 apstra_mcp.py -t stdio -f apstra_config.json
 ```
 
-### HTTP Server (for Streamlit/API clients)
+### Streaming HTTP Server (for network clients)
 
 ```bash
-# Start HTTP server with session-based authentication
-python3 apstra_mcp.py -t http -H 0.0.0.0 -p 8080 -f apstra_config.json
+# Start streamable HTTP server with native FastMCP streaming
+python3 apstra_mcp.py -t streamable-http -H 0.0.0.0 -p 8080 -f apstra_config.json
 ```
 
 ### Docker Deployment
 
 ```bash
-# Build and run with Docker Compose
-docker-compose up -d
+# Secure stdio transport (no network ports)
+docker-compose --profile stdio up -d
+
+# HTTP streaming (network access)
+docker-compose --profile streaming up -d
+
+# HTTPS with nginx proxy (recommended for production)
+./generate-certs.sh
+docker-compose --profile streaming --profile with-nginx up -d
 ```
 
 ## Configuration
@@ -107,7 +109,9 @@ Before running, create a configuration file (see `apstra_config_sample.json` for
 }
 ```
 
-**Note**: stdio transport uses simple config file authentication. For RBAC, use the HTTP transport mode.
+**Security Note**: 
+- **stdio transport** (default): Secure by default, no network exposure
+- **streamable-http transport**: Network-accessible, use reverse proxy with authentication for production
 
 ## Dependencies
 
@@ -121,35 +125,22 @@ Before running, create a configuration file (see `apstra_config_sample.json` for
 - Credentials are stored in JSON configuration files
 - Consider using encrypted credential storage for production use
 
-## Recent Improvements (Simplified Architecture)
+## Architecture Overview
 
 ### Transport Modes
-- **stdio Transport**: Simple config-based auth for Claude Desktop
-- **HTTP Transport**: Session-based RBAC for Streamlit/API clients
-- **Removed SSE**: Eliminated unnecessary complexity
+- **stdio Transport**: Secure local communication for Claude Desktop integration
+- **streamable-http Transport**: Network-accessible transport with native FastMCP streaming capabilities
 
 ### Authentication System
-- **stdio**: Uses config file credentials (no RBAC)
-- **HTTP**: Session-based authentication with tokens
-- **Session Manager**: Validates against actual Apstra credentials
-- **Audit Trail**: All API calls logged in Apstra
+- **Configuration-based**: Uses credentials from JSON configuration file
+- **Stateless Operation**: No session management or token persistence required
+- **Apstra Integration**: Direct authentication against Apstra Fabric Manager
 
-### Key Simplifications
-- **Single Server**: No more dual-server complexity
-- **Conditional Imports**: FastAPI only loaded when needed
-- **Removed Workarounds**: No more simple_http_api.py
-- **Clean Docker**: Single container deployment
-
-### Authentication Tools
-- **login()**: Create session (HTTP only)
-- **logout()**: Invalidate session (HTTP only)
-- **session_info()**: Show current auth status
-- **health()**: Server health check
-
-### Docker Deployment
-- **Single Container**: Just apstra-mcp-server
-- **Health Checks**: Built-in monitoring
-- **Optional Nginx**: For SSL termination
+### Key Features
+- **Native FastMCP Integration**: Leverages FastMCP framework's built-in transport capabilities
+- **Automatic SSE Support**: Streaming responses with Server-Sent Events for real-time updates
+- **Simplified Architecture**: Single server process with minimal dependencies
+- **Container Support**: Docker deployment with configurable transport modes
 
 ## Development Best Practices
 
@@ -165,19 +156,26 @@ Before running, create a configuration file (see `apstra_config_sample.json` for
 
 ### Testing Commands
 
-**stdio mode (Claude Desktop)**:
+**stdio mode**:
 ```bash
 python3 apstra_mcp.py -t stdio -f apstra_config.json
 ```
 
-**HTTP mode (Streamlit)**:
+**streamable-http mode**:
 ```bash
-python3 apstra_mcp.py -t http -H 0.0.0.0 -p 8080 -f apstra_config.json
+python3 apstra_mcp.py -t streamable-http -H 0.0.0.0 -p 8080 -f apstra_config.json
 ```
 
-**Docker deployment**:
+**Docker deployment options**:
 ```bash
-docker-compose up -d
+# Stdio only (secure)
+docker-compose --profile stdio up -d
+
+# HTTP streaming
+docker-compose --profile streaming up -d
+
+# HTTPS with SSL
+docker-compose --profile streaming --profile with-nginx up -d
 ```
 
 ### API Response Handling

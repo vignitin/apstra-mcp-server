@@ -378,8 +378,8 @@ initialize_config()
 # Session-based credential storage for user sessions
 _user_sessions = {}
 
-# The authentication function with user credential support
-def auth(server_url=None, user=None, passwd=None, user_credentials=None):
+# The authentication function using global config
+def auth(server_url=None, user=None, passwd=None):
     """
     Authenticate with Apstra server using either provided credentials or global config.
     
@@ -387,23 +387,15 @@ def auth(server_url=None, user=None, passwd=None, user_credentials=None):
         server_url: Optional server URL override
         user: Optional username override  
         passwd: Optional password override
-        user_credentials: Dict containing user-specific credentials from token
     
     Returns:
         Tuple of (headers, server) for API requests
     """
-    # Use user_credentials if provided, otherwise fall back to parameters or global config
-    if user_credentials:
-        # Support both generic and legacy field names
-        auth_user = user_credentials.get('username') or user_credentials.get('apstra_username') or user or username
-        auth_pass = user_credentials.get('password') or user_credentials.get('apstra_password') or passwd or password
-        server_override = user_credentials.get('server') or user_credentials.get('apstra_server')
-        port_override = user_credentials.get('port') or user_credentials.get('apstra_port')
-    else:
-        auth_user = user or username
-        auth_pass = passwd or password
-        server_override = None
-        port_override = None
+    # Use provided parameters or fall back to global config
+    auth_user = user or username
+    auth_pass = passwd or password
+    server_override = None
+    port_override = None
     
     # Handle server URL construction
     if server_url:
@@ -443,10 +435,10 @@ def auth(server_url=None, user=None, passwd=None, user_credentials=None):
 
 
 # Get blueprints
-def get_bp(server_url=None, user_credentials=None):
+def get_bp(server_url=None):
     """Gets blueprint information"""
     try:
-        headers, server = auth(server_url, user_credentials=user_credentials)
+        headers, server = auth(server_url)
         url = f'https://{server}/api/blueprints'
         response = httpx.get(url, headers=headers, verify=False)
         response.raise_for_status()
@@ -457,10 +449,10 @@ def get_bp(server_url=None, user_credentials=None):
         return error_msg
 
 # Get racks
-def get_racks(blueprint_id, server_url=None, user_credentials=None):
+def get_racks(blueprint_id, server_url=None):
     """Gets rack information for a blueprint"""
     try:
-        headers, server = auth(server_url, user_credentials=user_credentials)
+        headers, server = auth(server_url)
         url = f'https://{server}/api/blueprints/{blueprint_id}/racks'
         response = httpx.get(url, headers=headers, verify=False)
         response.raise_for_status()
@@ -471,10 +463,10 @@ def get_racks(blueprint_id, server_url=None, user_credentials=None):
         return error_msg
 
 # Get routing zones
-def get_rz(blueprint_id, server_url=None, user_credentials=None):
+def get_rz(blueprint_id, server_url=None):
     """Gets routing zone information for a blueprint"""
     try:
-        headers, server = auth(server_url, user_credentials=user_credentials)
+        headers, server = auth(server_url)
         url = f'https://{server}/api/blueprints/{blueprint_id}/security-zones'
         response = httpx.get(url, headers=headers, verify=False)
         response.raise_for_status()
@@ -485,10 +477,10 @@ def get_rz(blueprint_id, server_url=None, user_credentials=None):
         return error_msg
 
 # Get virtual networks
-def get_vn(blueprint_id, server_url=None, user_credentials=None):
+def get_vn(blueprint_id, server_url=None):
     """Gets virtual networks information for a blueprint"""
     try:
-        headers, server = auth(server_url, user_credentials=user_credentials)
+        headers, server = auth(server_url)
         url = f'https://{server}/api/blueprints/{blueprint_id}/virtual-networks'
         response = httpx.get(url, headers=headers, verify=False)
         response.raise_for_status()
@@ -499,10 +491,10 @@ def get_vn(blueprint_id, server_url=None, user_credentials=None):
         return error_msg
 
 # Get system info
-def get_system_info(blueprint_id, server_url=None, user_credentials=None):
+def get_system_info(blueprint_id, server_url=None):
     """Gets information about systems inside the blueprint"""
     try:
-        headers, server = auth(server_url, user_credentials=user_credentials)
+        headers, server = auth(server_url)
         url = f'https://{server}/api/blueprints/{blueprint_id}/experience/web/system-info'
         response = httpx.get(url, headers=headers, verify=False)
         response.raise_for_status()
@@ -513,10 +505,10 @@ def get_system_info(blueprint_id, server_url=None, user_credentials=None):
         return error_msg
 
 # Check staging version through diff-status
-def get_diff_status(blueprint_id, server_url=None, user_credentials=None):
+def get_diff_status(blueprint_id, server_url=None):
     """Gets the diff status for a blueprint"""
     try:
-        headers, server = auth(server_url, user_credentials=user_credentials)
+        headers, server = auth(server_url)
         url = f'https://{server}/api/blueprints/{blueprint_id}/diff-status'
         response = httpx.get(url, headers=headers, verify=False)
         response.raise_for_status()
@@ -527,10 +519,10 @@ def get_diff_status(blueprint_id, server_url=None, user_credentials=None):
         return error_msg
 
 # Deploy config
-def deploy(blueprint_id, description, staging_version, server_url=None, user_credentials=None):
+def deploy(blueprint_id, description, staging_version, server_url=None):
     """Deploys the config for a blueprint"""
     try:
-        headers, server = auth(server_url, user_credentials=user_credentials)
+        headers, server = auth(server_url)
         url = f'https://{server}/api/blueprints/{blueprint_id}/deploy'
         data = f'{{"version": {staging_version},"description":"{description}"}}'
         response = httpx.put(url, headers=headers, data=data, verify=False)
@@ -542,10 +534,10 @@ def deploy(blueprint_id, description, staging_version, server_url=None, user_cre
         return error_msg
 
 # Get templates
-def get_templates(server_url=None, user_credentials=None):
+def get_templates(server_url=None):
     """Gets available templates for blueprint creation"""
     try:
-        headers, server = auth(server_url, user_credentials=user_credentials)
+        headers, server = auth(server_url)
         url = f'https://{server}/api/design/templates'
         response = httpx.get(url, headers=headers, verify=False)
         response.raise_for_status()
@@ -557,10 +549,10 @@ def get_templates(server_url=None, user_credentials=None):
 
 
 # Delete blueprint
-def delete_blueprint(blueprint_id, server_url=None, user_credentials=None):
+def delete_blueprint(blueprint_id, server_url=None):
     """Deletes a blueprint by ID"""
     try:
-        headers, server = auth(server_url, user_credentials=user_credentials)
+        headers, server = auth(server_url)
         url = f'https://{server}/api/blueprints/{blueprint_id}'
         response = httpx.delete(url, headers=headers, verify=False)
         response.raise_for_status()
@@ -571,10 +563,10 @@ def delete_blueprint(blueprint_id, server_url=None, user_credentials=None):
         return error_msg
 
 # Get anomalies
-def get_anomalies(blueprint_id, server_url=None, user_credentials=None):
+def get_anomalies(blueprint_id, server_url=None):
     """Gets anomalies information for a blueprint"""
     try:
-        headers, server = auth(server_url, user_credentials=user_credentials)
+        headers, server = auth(server_url)
         url = f'https://{server}/api/blueprints/{blueprint_id}/anomalies'
         response = httpx.get(url, headers=headers, verify=False)
         response.raise_for_status()
@@ -585,10 +577,10 @@ def get_anomalies(blueprint_id, server_url=None, user_credentials=None):
         return error_msg
 
 # Get remote gateways
-def get_remote_gw(blueprint_id, server_url=None, user_credentials=None):
+def get_remote_gw(blueprint_id, server_url=None):
     """Gets a list of all remote gateways within a blueprint, keyed by remote gateway node ID."""
     try:
-        headers, server = auth(server_url, user_credentials=user_credentials)
+        headers, server = auth(server_url)
         url = f'https://{server}/api/blueprints/{blueprint_id}/remote_gateways'
         response = httpx.get(url, headers=headers, verify=False)
         response.raise_for_status()
@@ -599,10 +591,10 @@ def get_remote_gw(blueprint_id, server_url=None, user_credentials=None):
         return error_msg
 
 # Get protocol sessions
-def get_protocol_sessions(blueprint_id, server_url=None, user_credentials=None):
+def get_protocol_sessions(blueprint_id, server_url=None):
     """Return a list of all protocol sessions from the specified blueprint."""
     try:
-        headers, server = auth(server_url, user_credentials=user_credentials)
+        headers, server = auth(server_url)
         url = f'https://{server}/api/blueprints/{blueprint_id}/protocol-sessions'
         response = httpx.get(url, headers=headers, verify=False)
         response.raise_for_status()
@@ -617,10 +609,10 @@ def get_protocol_sessions(blueprint_id, server_url=None, user_credentials=None):
 # CREATE FUNCTIONS - All create operations grouped together
 
 # Create virtual networks
-def create_vn(blueprint_id, security_zone_id, vn_name, server_url=None, user_credentials=None):
+def create_vn(blueprint_id, security_zone_id, vn_name, server_url=None):
     """Creates a virtual network in a given blueprint and routing zone"""
     try:
-        headers, server = auth(server_url, user_credentials=user_credentials)
+        headers, server = auth(server_url)
         url = f'https://{server}/api/blueprints/{blueprint_id}/virtual-networks'
         data = f'{{"label": "{vn_name}","vn_type":"vxlan","security_zone_id":"{security_zone_id}"}}'
         response = httpx.post(url, data=data, headers=headers, verify=False, timeout=30.0)
@@ -632,12 +624,12 @@ def create_vn(blueprint_id, security_zone_id, vn_name, server_url=None, user_cre
         return error_msg
 
 # Create remote gateways
-def create_remote_gw(blueprint_id, gw_ip, gw_asn, gw_name, local_gw_nodes, evpn_route_types="all", password=None, keepalive_timer=10, evpn_interconnect_group_id=None, holdtime_timer=30, ttl=30, server_url=None, user_credentials=None):
+def create_remote_gw(blueprint_id, gw_ip, gw_asn, gw_name, local_gw_nodes, evpn_route_types="all", password=None, keepalive_timer=10, evpn_interconnect_group_id=None, holdtime_timer=30, ttl=30, server_url=None):
     """Creates a remote gateway in a given blueprint. Remote EVPN Gateway is a logical function that you could instantiate anywhere and on any device. 
     It requires BGP support in general, L2VPN/EVPN AFI/SAFI specifically. To establish a BGP session with an EVPN gateway, IP connectivity, 
     as well as connectivity to TCP port 179 (IANA allocates BGP TCP ports), should be available."""
     try:
-        headers, server = auth(server_url, user_credentials=user_credentials)
+        headers, server = auth(server_url)
         url = f'https://{server}/api/blueprints/{blueprint_id}/remote_gateways'
         payload = {
             "gw_name": gw_name,
@@ -667,10 +659,10 @@ def create_remote_gw(blueprint_id, gw_ip, gw_asn, gw_name, local_gw_nodes, evpn_
         return error_msg
 
 # Create datacenter blueprint
-def create_datacenter_blueprint(blueprint_name, template_id, server_url=None, user_credentials=None):
+def create_datacenter_blueprint(blueprint_name, template_id, server_url=None):
     """Creates a new datacenter blueprint with the specified name and template"""
     try:
-        headers, server = auth(server_url, user_credentials=user_credentials)
+        headers, server = auth(server_url)
         url = f'https://{server}/api/blueprints'
         data = f'{{"design":"two_stage_l3clos","init_type":"template_reference","template_id":"{template_id}","label":"{blueprint_name}"}}'
         response = httpx.post(url, data=data, headers=headers, verify=False, timeout=30.0)
@@ -682,10 +674,10 @@ def create_datacenter_blueprint(blueprint_name, template_id, server_url=None, us
         return error_msg
 
 # Create freeform blueprint
-def create_freeform_blueprint(blueprint_name, server_url=None, user_credentials=None):
+def create_freeform_blueprint(blueprint_name, server_url=None):
     """Creates a new freeform blueprint with the specified name"""
     try:
-        headers, server = auth(server_url, user_credentials=user_credentials)
+        headers, server = auth(server_url)
         url = f'https://{server}/api/blueprints'
         data = f'{{"design":"freeform","init_type":"none","label":"{blueprint_name}"}}'
         response = httpx.post(url, data=data, headers=headers, verify=False, timeout=30.0)

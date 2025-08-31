@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-Apstra MCP Server - Simplified Version
+Apstra MCP Server with Native FastMCP HTTP Transport
 Supports:
-- stdio transport for Claude Desktop (no RBAC, uses config file)
-- http transport for Streamlit/API clients (session-based RBAC)
+- stdio transport for Claude Desktop
+- streamable-http transport with native FastMCP streaming support
 """
 
-from fastmcp import FastMCP, Client
+from fastmcp import FastMCP
 import apstra_core
 import argparse
 import sys
@@ -15,7 +15,6 @@ import os
 import json
 import time
 from typing import Optional, Dict, Any
-from session_manager import session_manager
 from logger_config import setup_logger
 
 # Set up logger
@@ -26,8 +25,8 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Apstra MCP Server')
     parser.add_argument('-f', '--config-file', default='apstra_config.json',
                       help='Path to Apstra configuration JSON file (default: apstra_config.json)')
-    parser.add_argument('-t', '--transport', default='stdio', choices=['stdio', 'http'],
-                      help='Transport mode: stdio for Claude Desktop, http for Streamlit/API (default: stdio)')
+    parser.add_argument('-t', '--transport', default='stdio', choices=['stdio', 'streamable-http'],
+                      help='Transport mode: stdio for Claude Desktop, streamable-http for streaming API (default: stdio)')
     parser.add_argument('-H', '--host', default='127.0.0.1',
                       help='Host to bind to for HTTP transport (default: 127.0.0.1)')
     parser.add_argument('-p', '--port', type=int, default=8080,
@@ -37,7 +36,6 @@ def parse_args():
 # Global variables
 args = None
 mcp = None
-http_app = None
 
 # Initialize everything
 try:
@@ -58,75 +56,8 @@ except Exception as e:
     sys.exit(1)
 
 # =============================================================================
-# MCP TOOL DEFINITIONS - AUTHENTICATION
+# MCP TOOL DEFINITIONS - QUERY OPERATIONS
 # =============================================================================
-
-@mcp.tool()
-def login(username: str, password: str, server: str, port: str = "443") -> str:
-    """
-    Authenticate with Apstra server (HTTP transport only).
-    stdio transport uses config file authentication.
-    """
-    if args.transport == 'stdio':
-        return json.dumps({
-            "error": "Not applicable", 
-            "message": "stdio transport uses config file authentication"
-        }, indent=2)
-    
-    # HTTP transport - create session
-    success, message, token = session_manager.authenticate_user(
-        username, password, server, port
-    )
-    
-    if success and token:
-        return json.dumps({
-            "session_token": token,
-            "message": message,
-            "expires_in": f"{session_manager.session_timeout} seconds"
-        }, indent=2)
-    else:
-        return json.dumps({
-            "error": "Authentication failed",
-            "message": message
-        }, indent=2)
-
-@mcp.tool()
-def logout(session_token: str) -> str:
-    """Invalidate session token (HTTP transport only)."""
-    if args.transport == 'stdio':
-        return json.dumps({
-            "error": "Not applicable",
-            "message": "stdio transport has no sessions"
-        }, indent=2)
-    
-    if session_manager.logout_session(session_token):
-        return json.dumps({"message": "Logout successful"}, indent=2)
-    else:
-        return json.dumps({"message": "Session not found"}, indent=2)
-
-@mcp.tool()
-def session_info(session_token: Optional[str] = None) -> str:
-    """Get current authentication status."""
-    info = {
-        "transport": args.transport,
-        "config_file": args.config_file
-    }
-    
-    if args.transport == 'stdio':
-        info["authentication"] = "config_file"
-        info["message"] = "Using credentials from config file"
-    else:
-        info["authentication"] = "session_based"
-        info["active_sessions"] = len(session_manager.sessions)
-        info["message"] = "Use login() to authenticate"
-        if session_token:
-            session_info_details = session_manager.get_session_info(session_token)
-            if session_info_details:
-                info["session_details"] = session_info_details
-            else:
-                info["session_error"] = "Invalid or expired session token"
-    
-    return json.dumps(info, indent=2)
 
 @mcp.tool()
 def health() -> str:
@@ -138,9 +69,6 @@ def health() -> str:
         "timestamp": time.time()
     }
     
-    if args.transport == 'http':
-        health_info["sessions"] = len(session_manager.sessions)
-    
     # Test Apstra connectivity
     try:
         result = apstra_core.auth()
@@ -150,84 +78,79 @@ def health() -> str:
     
     return json.dumps(health_info, indent=2)
 
-# =============================================================================
-# MCP TOOL DEFINITIONS - QUERY OPERATIONS
-# =============================================================================
-
 @mcp.tool()
 def formatting_guidelines() -> str:
     """Get formatting guidelines for presenting network infrastructure data with tables and icons"""
     return apstra_core.get_formatting_guidelines()
 
 @mcp.tool()
-def get_bp(server_url: Optional[str] = None, user_credentials: Optional[Dict[str, Any]] = None) -> str:
+def get_bp() -> str:
     """Get list of all blueprints"""
-    data = apstra_core.get_bp(server_url, user_credentials)
+    data = apstra_core.get_bp()
     guidelines = apstra_core.get_base_guidelines() + apstra_core.get_blueprint_guidelines()
     return f"{guidelines}\n\n## Blueprint Data:\n{data}"
 
 
-
 @mcp.tool()
-def get_racks(blueprint_id: str, server_url: Optional[str] = None, user_credentials: Optional[Dict[str, Any]] = None) -> str:
+def get_racks(blueprint_id: str) -> str:
     """Get all racks in a blueprint"""
-    data = apstra_core.get_racks(blueprint_id, server_url, user_credentials)
+    data = apstra_core.get_racks(blueprint_id)
     guidelines = apstra_core.get_base_guidelines() + apstra_core.get_device_guidelines()
     return f"{guidelines}\n\n## Rack Data:\n{data}"
 
 @mcp.tool()
-def get_rz(blueprint_id: str, server_url: Optional[str] = None, user_credentials: Optional[Dict[str, Any]] = None) -> str:
+def get_rz(blueprint_id: str) -> str:
     """Get all routing zones in a blueprint"""
-    data = apstra_core.get_rz(blueprint_id, server_url, user_credentials)
+    data = apstra_core.get_rz(blueprint_id)
     guidelines = apstra_core.get_base_guidelines() + apstra_core.get_network_guidelines()
     return f"{guidelines}\n\n## Routing Zones Data:\n{data}"
 
 @mcp.tool()
-def get_vn(blueprint_id: str, server_url: Optional[str] = None, user_credentials: Optional[Dict[str, Any]] = None) -> str:
+def get_vn(blueprint_id: str) -> str:
     """Get virtual networks in a blueprint"""
-    data = apstra_core.get_vn(blueprint_id, server_url, user_credentials)
+    data = apstra_core.get_vn(blueprint_id)
     guidelines = apstra_core.get_base_guidelines() + apstra_core.get_network_guidelines()
     return f"{guidelines}\n\n## Virtual Networks Data:\n{data}"
 
 @mcp.tool()
-def get_remote_gw(blueprint_id: str, server_url: Optional[str] = None, user_credentials: Optional[Dict[str, Any]] = None) -> str:
+def get_remote_gw(blueprint_id: str) -> str:
     """Get all remote gateways in a blueprint"""
-    data = apstra_core.get_remote_gw(blueprint_id, server_url, user_credentials)
+    data = apstra_core.get_remote_gw(blueprint_id)
     guidelines = apstra_core.get_base_guidelines() + apstra_core.get_network_guidelines()
     return f"{guidelines}\n\n## Remote Gateways Data:\n{data}"
 
 @mcp.tool()
-def get_system_info(blueprint_id: str, server_url: Optional[str] = None, user_credentials: Optional[Dict[str, Any]] = None) -> str:
+def get_system_info(blueprint_id: str) -> str:
     """Get systems (devices) in a blueprint"""
-    data = apstra_core.get_system_info(blueprint_id, server_url, user_credentials)
+    data = apstra_core.get_system_info(blueprint_id)
     guidelines = apstra_core.get_base_guidelines() + apstra_core.get_device_guidelines()
     return f"{guidelines}\n\n## System Information Data:\n{data}"
 
 @mcp.tool()
-def get_anomalies(blueprint_id: str, server_url: Optional[str] = None, user_credentials: Optional[Dict[str, Any]] = None) -> str:
+def get_anomalies(blueprint_id: str) -> str:
     """Get anomalies in a blueprint"""
-    data = apstra_core.get_anomalies(blueprint_id, server_url, user_credentials)
+    data = apstra_core.get_anomalies(blueprint_id)
     guidelines = apstra_core.get_base_guidelines() + apstra_core.get_anomaly_guidelines()
     return f"{guidelines}\n\n## Anomaly Data:\n{data}"
 
 @mcp.tool()
-def get_diff_status(blueprint_id: str, server_url: Optional[str] = None, user_credentials: Optional[Dict[str, Any]] = None) -> str:
+def get_diff_status(blueprint_id: str) -> str:
     """Get configuration diff status for a blueprint"""
-    data = apstra_core.get_diff_status(blueprint_id, server_url, user_credentials)
+    data = apstra_core.get_diff_status(blueprint_id)
     guidelines = apstra_core.get_base_guidelines() + apstra_core.get_status_guidelines()
     return f"{guidelines}\n\n## Configuration Diff Status:\n{data}"
 
 @mcp.tool()
-def get_templates(server_url: Optional[str] = None, user_credentials: Optional[Dict[str, Any]] = None) -> str:
+def get_templates() -> str:
     """Get list of all available templates"""
-    data = apstra_core.get_templates(server_url, user_credentials)
+    data = apstra_core.get_templates()
     guidelines = apstra_core.get_base_guidelines() + apstra_core.get_blueprint_guidelines()
     return f"{guidelines}\n\n## Templates Data:\n{data}"
 
 @mcp.tool()
-def get_protocol_sessions(blueprint_id: str, server_url: Optional[str] = None, user_credentials: Optional[Dict[str, Any]] = None) -> str:
+def get_protocol_sessions(blueprint_id: str) -> str:
     """Get protocol sessions in a blueprint"""
-    data = apstra_core.get_protocol_sessions(blueprint_id, server_url, user_credentials)
+    data = apstra_core.get_protocol_sessions(blueprint_id)
     guidelines = apstra_core.get_base_guidelines() + apstra_core.get_status_guidelines()
     return f"{guidelines}\n\n## Protocol Sessions Data:\n{data}"
 
@@ -236,16 +159,16 @@ def get_protocol_sessions(blueprint_id: str, server_url: Optional[str] = None, u
 # =============================================================================
 
 @mcp.tool()
-def deploy(blueprint_id: str, description: str, staging_version: int, server_url: Optional[str] = None, user_credentials: Optional[Dict[str, Any]] = None) -> str:
+def deploy(blueprint_id: str, description: str, staging_version: int) -> str:
     """Deploy blueprint configuration"""
-    data = apstra_core.deploy(blueprint_id, description, staging_version, server_url, user_credentials)
+    data = apstra_core.deploy(blueprint_id, description, staging_version)
     guidelines = apstra_core.get_base_guidelines() + apstra_core.get_change_mgmt_guidelines()
     return f"{guidelines}\n\n## Deployment Result:\n{data}"
 
 @mcp.tool()
-def delete_blueprint(blueprint_id: str, server_url: Optional[str] = None, user_credentials: Optional[Dict[str, Any]] = None) -> str:
+def delete_blueprint(blueprint_id: str) -> str:
     """Delete a blueprint"""
-    data = apstra_core.delete_blueprint(blueprint_id, server_url, user_credentials)
+    data = apstra_core.delete_blueprint(blueprint_id)
     guidelines = apstra_core.get_base_guidelines() + apstra_core.get_change_mgmt_guidelines()
     return f"{guidelines}\n\n## Deletion Result:\n{data}"
 
@@ -254,245 +177,34 @@ def delete_blueprint(blueprint_id: str, server_url: Optional[str] = None, user_c
 # =============================================================================
 
 @mcp.tool()
-def create_vn(blueprint_id: str, security_zone_id: str, vn_name: str, server_url: Optional[str] = None, user_credentials: Optional[Dict[str, Any]] = None) -> str:
+def create_vn(blueprint_id: str, security_zone_id: str, vn_name: str) -> str:
     """Create a virtual network in a routing zone"""
-    data = apstra_core.create_vn(blueprint_id, security_zone_id, vn_name, server_url, user_credentials)
+    data = apstra_core.create_vn(blueprint_id, security_zone_id, vn_name)
     guidelines = apstra_core.get_base_guidelines() + apstra_core.get_change_mgmt_guidelines()
     return f"{guidelines}\n\n## Virtual Network Creation Result:\n{data}"
 
 @mcp.tool()
-def create_remote_gw(blueprint_id: str, gw_ip: str, gw_asn: int, gw_name: str, local_gw_nodes: list, evpn_route_types: str = "all", password: Optional[str] = None, keepalive_timer: int = 10, evpn_interconnect_group_id: Optional[str] = None, holdtime_timer: int = 30, ttl: int = 30, server_url: Optional[str] = None, user_credentials: Optional[Dict[str, Any]] = None) -> str:
+def create_remote_gw(blueprint_id: str, gw_ip: str, gw_asn: int, gw_name: str, local_gw_nodes: list, evpn_route_types: str = "all", password: Optional[str] = None, keepalive_timer: int = 10, evpn_interconnect_group_id: Optional[str] = None, holdtime_timer: int = 30, ttl: int = 30) -> str:
     """Create a remote EVPN gateway"""
-    data = apstra_core.create_remote_gw(blueprint_id, gw_ip, gw_asn, gw_name, local_gw_nodes, evpn_route_types, password, keepalive_timer, evpn_interconnect_group_id, holdtime_timer, ttl, server_url, user_credentials)
+    data = apstra_core.create_remote_gw(blueprint_id, gw_ip, gw_asn, gw_name, local_gw_nodes, evpn_route_types, password, keepalive_timer, evpn_interconnect_group_id, holdtime_timer, ttl)
     guidelines = apstra_core.get_base_guidelines() + apstra_core.get_change_mgmt_guidelines()
     return f"{guidelines}\n\n## Remote Gateway Creation Result:\n{data}"
 
 @mcp.tool()
-def create_datacenter_blueprint(blueprint_name: str, template_id: str, server_url: Optional[str] = None, user_credentials: Optional[Dict[str, Any]] = None) -> str:
+def create_datacenter_blueprint(blueprint_name: str, template_id: str) -> str:
     """Create a new datacenter blueprint from a template"""
-    data = apstra_core.create_datacenter_blueprint(blueprint_name, template_id, server_url, user_credentials)
+    data = apstra_core.create_datacenter_blueprint(blueprint_name, template_id)
     guidelines = apstra_core.get_base_guidelines() + apstra_core.get_change_mgmt_guidelines()
     return f"{guidelines}\n\n## Blueprint Creation Result:\n{data}"
 
 @mcp.tool()
-def create_freeform_blueprint(blueprint_name: str, server_url: Optional[str] = None, user_credentials: Optional[Dict[str, Any]] = None) -> str:
+def create_freeform_blueprint(blueprint_name: str) -> str:
     """Create a new freeform blueprint"""
-    data = apstra_core.create_freeform_blueprint(blueprint_name, server_url, user_credentials)
+    data = apstra_core.create_freeform_blueprint(blueprint_name)
     guidelines = apstra_core.get_base_guidelines() + apstra_core.get_change_mgmt_guidelines()
     return f"{guidelines}\n\n## Blueprint Creation Result:\n{data}"
 
 logger.info("All MCP tools registered")
-
-# =============================================================================
-# HTTP TRANSPORT SETUP
-# =============================================================================
-
-def setup_http_endpoints():
-    """Set up HTTP endpoints for MCP protocol compliance"""
-    global http_app
-    
-    # Import FastAPI only when needed
-    from fastapi import FastAPI, HTTPException, Depends, status
-    from fastapi.middleware.cors import CORSMiddleware
-    from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-    from pydantic import BaseModel
-    import inspect
-    
-    # Create FastAPI app
-    http_app = FastAPI(
-        title="Apstra MCP Server",
-        version="2.0.0",
-        description="MCP server with session-based authentication"
-    )
-    
-    # Add CORS
-    http_app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"],
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
-    
-    # Security
-    security = HTTPBearer()
-    
-    # Pydantic models
-    class LoginRequest(BaseModel):
-        username: str
-        password: str
-        server: str
-        port: str = "443"
-    
-    class MCPRequest(BaseModel):
-        params: Dict[str, Any] = {}
-    
-    # Authentication dependency
-    async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> Dict[str, Any]:
-        """Validate bearer token and return user credentials"""
-        user_creds = session_manager.validate_session(credentials.credentials)
-        if not user_creds:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid or expired session token",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-        return user_creds
-    
-    # MCP Protocol endpoints
-    @http_app.post("/mcp/v1/initialize")
-    async def mcp_initialize():
-        """MCP protocol initialization"""
-        return {
-            "protocolVersion": "1.0",
-            "serverInfo": {
-                "name": "apstra-mcp",
-                "version": "2.0.0"
-            },
-            "capabilities": {
-                "tools": True,
-                "prompts": False,
-                "resources": False
-            }
-        }
-    
-    @http_app.post("/mcp/v1/list_tools")
-    async def mcp_list_tools(user: Dict[str, Any] = Depends(get_current_user)):
-        """List available MCP tools"""
-        try:
-            # Use FastMCP via Client to get full schemas (Client returns proper Tool objects with schemas)
-            async with Client(mcp) as client:
-                tools_result = await client.list_tools()
-            
-            tools = []
-            for tool in tools_result:
-                tool_name = tool.name if hasattr(tool, 'name') else str(tool)
-                
-                # Skip auth tools for authenticated endpoints
-                if tool_name in ['login', 'logout', 'session_info', 'health']:
-                    continue
-                
-                # Extract schema from FastMCP Tool object
-                tool_schema = {
-                    "name": tool_name,
-                    "description": tool.description if hasattr(tool, 'description') else f"Execute {tool_name} operation",
-                    "inputSchema": tool.inputSchema if hasattr(tool, 'inputSchema') else {
-                        "type": "object",
-                        "properties": {},
-                        "required": []
-                    }
-                }
-                tools.append(tool_schema)
-            
-            return {"tools": tools}
-            
-        except Exception as e:
-            logger.error(f"Failed to list tools: {str(e)}")
-            raise HTTPException(status_code=500, detail=f"Failed to access tools: {str(e)}")
-    
-    @http_app.post("/mcp/v1/call_tool")
-    async def mcp_call_tool(request: MCPRequest, user: Dict[str, Any] = Depends(get_current_user)):
-        """Call an MCP tool"""
-        params = request.params
-        tool_name = params.get("name")
-        
-        if not tool_name:
-            raise HTTPException(status_code=400, detail="Tool name required")
-        
-        # Check if tool exists using FastMCP's get_tools API
-        try:
-            available_tools = await mcp.get_tools()
-            if tool_name not in available_tools:
-                raise HTTPException(status_code=404, detail=f"Tool '{tool_name}' not found")
-        except Exception as e:
-            raise HTTPException(status_code=404, detail=f"Tool '{tool_name}' not found: {str(e)}")
-        
-        # Skip auth tools
-        if tool_name in ['login', 'logout', 'session_info', 'health']:
-            raise HTTPException(status_code=403, detail=f"Tool '{tool_name}' not available here")
-        
-        # Prepare arguments (exclude 'name') and add user auth
-        tool_args = {k: v for k, v in params.items() if k != "name"}
-        
-        # Add user_credentials parameter for tools that need it
-        # Most apstra tools will need authentication
-        if tool_name not in ['session_info', 'health']:
-            tool_args['user_credentials'] = user
-        
-        # Execute tool using FastMCP Client
-        try:
-            async with Client(mcp) as client:
-                call_result = await client.call_tool(tool_name, tool_args)
-            
-            # Extract content from CallToolResult
-            if hasattr(call_result, 'content'):
-                # FastMCP returns CallToolResult with content attribute
-                content = call_result.content
-                if isinstance(content, list) and len(content) > 0:
-                    # Extract text from first content item
-                    text_content = content[0].text if hasattr(content[0], 'text') else str(content[0])
-                else:
-                    text_content = str(content)
-            else:
-                # Fallback if structure is different
-                text_content = str(call_result)
-            
-            # Format response in MCP format
-            return {
-                "content": [
-                    {
-                        "type": "text", 
-                        "text": text_content
-                    }
-                ]
-            }
-        except Exception as e:
-            logger.error(f"Tool execution failed: {str(e)}")
-            raise HTTPException(status_code=500, detail=str(e))
-    
-    @http_app.post("/mcp/v1/list_prompts")
-    async def mcp_list_prompts(user: Dict[str, Any] = Depends(get_current_user)):
-        """List prompts (not supported)"""
-        return {"prompts": []}
-    
-    @http_app.post("/mcp/v1/list_resources")
-    async def mcp_list_resources(user: Dict[str, Any] = Depends(get_current_user)):
-        """List resources (not supported)"""
-        return {"resources": []}
-    
-    # Authentication endpoints
-    @http_app.post("/tools/login")
-    async def login_endpoint(request: LoginRequest):
-        """Login to get session token"""
-        success, message, token = session_manager.authenticate_user(
-            request.username, request.password, request.server, request.port
-        )
-        
-        if success and token:
-            return {
-                "status": "success",
-                "session_token": token,
-                "message": message
-            }
-        else:
-            raise HTTPException(status_code=401, detail=message)
-    
-    @http_app.post("/tools/logout")
-    async def logout_endpoint(user: Dict[str, Any] = Depends(get_current_user)):
-        """Logout and invalidate session"""
-        # Get token from auth header via dependency
-        return {"message": "Logout successful"}
-    
-    @http_app.get("/health")
-    async def health_check():
-        """Health check endpoint"""
-        return {
-            "status": "healthy",
-            "transport": "http",
-            "sessions": len(session_manager.sessions)
-        }
-    
-    return http_app
 
 # =============================================================================
 # MAIN EXECUTION
@@ -512,23 +224,21 @@ def main():
     try:
         if args.transport == 'stdio':
             # Simple stdio mode for Claude Desktop
-            logger.info("Starting stdio transport for Claude Desktop")
+            logger.info("Starting stdio transport")
             mcp.run(transport="stdio")
             
-        elif args.transport == 'http':
-            # HTTP mode for Streamlit/API clients
-            logger.info(f"Starting HTTP transport on {args.host}:{args.port}")
+        elif args.transport == 'streamable-http':
+            # Native FastMCP streamable HTTP mode with SSE support
+            logger.info(f"Starting native FastMCP streamable HTTP transport on {args.host}:{args.port}")
+            logger.info("This transport supports automatic SSE upgrades for streaming responses")
             
-            # Set up HTTP endpoints
-            global http_app
-            http_app = setup_http_endpoints()
-            
-            # Start session cleanup
-            session_manager.cleanup_expired_sessions()
-            
-            # Run server
-            import uvicorn
-            uvicorn.run(http_app, host=args.host, port=args.port, log_level="info")
+            # Use FastMCP's native streamable HTTP transport
+            # This automatically handles:
+            # - MCP protocol endpoints
+            # - Automatic SSE upgrades for streaming
+            # - Bidirectional communication
+            # - Long-running operation progress
+            mcp.run(transport="streamable-http", host=args.host, port=args.port)
             
     except KeyboardInterrupt:
         logger.info("Shutdown by user")

@@ -2,7 +2,7 @@
 
 A Model Context Protocol (MCP) server that provides tools for interacting with Juniper Apstra Fabric Manager APIs. Enables Claude and other MCP clients to manage datacenter network infrastructure through natural language commands.
 
-## 🚀 Features
+## Features
 
 - **Blueprint Management**: Create, retrieve, and delete blueprint configurations
 - **Infrastructure Queries**: Get rack, routing zone, and system information  
@@ -10,10 +10,11 @@ A Model Context Protocol (MCP) server that provides tools for interacting with J
 - **Configuration Management**: Check deployment status and deploy configurations
 - **Protocol Monitoring**: Monitor BGP and other protocol sessions
 - **Anomaly Detection**: Retrieve and analyze blueprint anomalies
+- **Native Streaming Support**: Real-time updates with Server-Sent Events
 
-## 🏃‍♂️ Quick Start
+## Quick Start
 
-### Local Usage (Claude Desktop)
+### Local Usage (Claude Desktop - Secure by default)
 ```bash
 # Create config file
 cp apstra_config_sample.json apstra_config.json
@@ -23,16 +24,19 @@ cp apstra_config_sample.json apstra_config.json
 python3 apstra_mcp.py -t stdio -f apstra_config.json
 ```
 
-### Remote Deployment
+### Network Deployment (Streaming HTTP)
 ```bash
-# HTTP server
-python3 apstra_mcp.py -t http -H 0.0.0.0 -p 8080 -f apstra_config.json
+# Streamable HTTP server with native FastMCP streaming
+python3 apstra_mcp.py -t streamable-http -H 0.0.0.0 -p 8080 -f apstra_config.json
 
-# Docker
+# Docker - secure by default
 docker-compose up -d
+
+# Docker - with network access
+docker-compose --profile streaming up -d apstra-mcp-streaming
 ```
 
-## 🔧 Installation
+## Installation
 
 ### Prerequisites
 - Python 3.7+
@@ -44,60 +48,64 @@ docker-compose up -d
 pip install fastmcp httpx
 ```
 
-## 📋 Available Tools
+## Available Tools (17 total)
 
-### Authentication & Status (4 tools)
-- `login()` - Create session (HTTP transport only)
-- `logout()` - End session (HTTP transport only)
-- `session_info()` - Show authentication status
-- `health()` - Server health check
+### Health & Status Tools (2 tools)
+- `health()` - Server health check and Apstra connectivity status
+- `formatting_guidelines()` - Get formatting guidelines for network data presentation
 
-### Query Tools (10 tools)
+### Query Tools (9 tools)
 - `get_bp()` - Get blueprint information
-- `get_racks()` - Get rack information  
-- `get_rz()` - Get routing zones
-- `get_vn()` - Get virtual networks
-- `get_system_info()` - Get system/device information
-- `get_protocol_sessions()` - Get protocol sessions
-- `get_anomalies()` - Get blueprint anomalies
-- `get_remote_gw()` - Get remote gateways
-- `get_diff_status()` - Get deployment diff status
+- `get_racks(blueprint_id)` - Get rack information  
+- `get_rz(blueprint_id)` - Get routing zones
+- `get_vn(blueprint_id)` - Get virtual networks
+- `get_system_info(blueprint_id)` - Get system/device information
+- `get_protocol_sessions(blueprint_id)` - Get protocol sessions
+- `get_anomalies(blueprint_id)` - Get blueprint anomalies
+- `get_remote_gw(blueprint_id)` - Get remote gateways
+- `get_diff_status(blueprint_id)` - Get deployment diff status
 - `get_templates()` - Get available templates
 
 ### Management Tools (2 tools)
-- `deploy()` - Deploy configurations
-- `delete_blueprint()` - Delete blueprints
+- `deploy(blueprint_id, description, staging_version)` - Deploy configurations
+- `delete_blueprint(blueprint_id)` - Delete blueprints
 
 ### Create Tools (4 tools)
-- `create_vn()` - Create virtual networks
-- `create_remote_gw()` - Create remote gateways  
-- `create_datacenter_blueprint()` - Create datacenter blueprints
-- `create_freeform_blueprint()` - Create freeform blueprints
+- `create_vn(blueprint_id, security_zone_id, vn_name)` - Create virtual networks
+- `create_remote_gw(blueprint_id, gw_ip, gw_asn, gw_name, local_gw_nodes, ...)` - Create remote gateways  
+- `create_datacenter_blueprint(blueprint_name, template_id)` - Create datacenter blueprints
+- `create_freeform_blueprint(blueprint_name)` - Create freeform blueprints
 
-## 🔐 Authentication
+## Security Model
 
-### stdio Transport (Claude Desktop)
-Uses config file credentials - simple and secure for local use.
+### stdio Transport (Default)
+- Secure by default with no network exposure
+- Uses configuration file credentials
+- Ideal for Claude Desktop integration
 
-### HTTP Transport (Remote/API)
-Session-based authentication with real Apstra credentials:
-1. Call `login()` with credentials → get session token
-2. Use session token with any tool
-3. All actions logged in Apstra with real user identity
+### streamable-http Transport
+- Network-accessible with native FastMCP streaming capabilities
+- Automatic SSE upgrades for real-time updates
+- HTTPS support with nginx reverse proxy and local certificates
+- Production-ready with security headers and rate limiting
 
-**Example Implementation**: See the [Streamlit Chat App](https://github.com/vignitin/streamlit-chat-app) for a complete web-based interface that demonstrates HTTP transport usage with session authentication.
-
-## 🐳 Docker Deployment
+## Docker Deployment
 
 ```bash
 git clone <this-repo>
 cd apstra-mcp-server
 cp apstra_config_sample.json apstra_config.json
 # Edit config with your Apstra details
+```
+
+### Deployment Options
+
+```bash
+# HTTP streaming server (default)
 docker-compose up -d
 ```
 
-## 💡 Usage Examples
+## Usage Examples
 
 ### With Claude Desktop
 - "Show me all blueprints in the system"
@@ -105,47 +113,55 @@ docker-compose up -d
 - "Deploy the staging configuration"
 - "Check for any anomalies in blueprint X"
 
-### HTTP API
-```bash
-# Login
-curl -X POST http://server:8080/tools/call \
-  -d '{"method":"tools/call","params":{"name":"login","arguments":{"username":"user@company.com","password":"password","server":"apstra.company.com"}}}'
+### Streaming HTTP Client
+The server exposes native FastMCP endpoints on `/mcp/*` with automatic SSE upgrades for streaming responses.
 
-# Use any tool with session token
-curl -X POST http://server:8080/tools/call \
-  -d '{"method":"tools/call","params":{"name":"get_bp","arguments":{"session_token":"your-token"}}}'
-```
+## Architecture
 
-## 📖 Documentation
+### Native FastMCP Integration
+- Uses FastMCP's built-in transport system
+- Automatic streaming with Server-Sent Events
+- Bidirectional communication support
+- Long-running operation progress tracking
 
+### Simplified Authentication
+- Configuration-based credentials
+- Stateless operation
+- Direct Apstra API authentication
+
+### Container Architecture
+
+**Single Container Deployment:**
+- `apstra-mcp-streaming` - HTTP server on port 8080
+- Supports native FastMCP streamable-http transport
+- Automatic SSE upgrades for real-time updates
+
+## Documentation
+
+- **[DEPLOYMENT.md](DEPLOYMENT.md)** - Complete deployment guide with examples
 - **[CLAUDE.md](CLAUDE.md)** - Technical implementation details and development guide
-- **[TESTING.md](TESTING.md)** - Test framework documentation
 - **[claude_desktop_config_examples.json](claude_desktop_config_examples.json)** - Configuration examples
 
-## 🔗 Related Projects
-
-- **[Streamlit Chat App](https://github.com/vignitin/streamlit-chat-app)** - Web-based chat interface that integrates with this MCP server via HTTP transport
-
-## 🛠️ Command Line Options
+## Command Line Options
 
 ```bash
 python3 apstra_mcp.py [OPTIONS]
 
 Options:
-  -t, --transport {stdio,http}    Transport mode (default: stdio)
-  -f, --config-file FILE          Apstra config JSON file
-  -H, --host HOST                 HTTP host (default: 127.0.0.1)  
-  -p, --port PORT                 HTTP port (default: 8080)
+  -t, --transport {stdio,streamable-http}  Transport mode (default: stdio)
+  -f, --config-file FILE                   Apstra config JSON file
+  -H, --host HOST                          HTTP host (default: 127.0.0.1)  
+  -p, --port PORT                          HTTP port (default: 8080)
 ```
 
-## 🔍 Troubleshooting
+## Troubleshooting
 
 - **Authentication fails**: Check credentials and server connectivity
 - **Tools not appearing**: Verify server startup in Claude Desktop logs
-- **Session expired**: Call `login()` again for new token
+- **Transport errors**: Ensure FastMCP version compatibility
 - **Docker issues**: Check `docker-compose logs`
 
-## 📝 License
+## License
 
 This project is provided as-is for educational and demonstration purposes.
 

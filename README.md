@@ -146,18 +146,6 @@ The server exposes native FastMCP endpoints on `/mcp/*` with automatic SSE upgra
 - **[DEPLOYMENT.md](DEPLOYMENT.md)** - Complete deployment guide with examples
 - **[CLAUDE.md](CLAUDE.md)** - Technical implementation details and development guide
 
-## Command Line Options
-
-```bash
-python3 apstra_mcp.py [OPTIONS]
-
-Options:
-  -t, --transport {stdio,streamable-http}  Transport mode (default: stdio)
-  -f, --config-file FILE                   Apstra config JSON file
-  -H, --host HOST                          HTTP host (default: 127.0.0.1)  
-  -p, --port PORT                          HTTP port (default: 8080)
-```
-
 ## Troubleshooting
 
 - **Authentication fails**: Check credentials and server connectivity

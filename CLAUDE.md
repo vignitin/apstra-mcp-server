@@ -13,7 +13,7 @@ The project consists of two main Python files:
 ### `apstra_mcp.py` - MCP Server Interface
 - **FastMCP Server**: Built using the `fastmcp` framework with native transport support
 - **Transport Modes**: Supports stdio (secure) and streamable-http (with native FastMCP streaming)
-- **MCP Tool Definitions**: 18 MCP tools organized into logical groups
+- **MCP Tool Definitions**: 21 MCP tools organized into logical groups
 - **Native FastMCP Transport**: Uses FastMCP's built-in HTTP and SSE capabilities
 
 ### `apstra_core.py` - Core Functionality
@@ -28,25 +28,30 @@ The project consists of two main Python files:
 - **Health check**: Server status (`health()`)  
 - **Formatting**: Formatting guidelines (`formatting_guidelines()`)
 
-**Query Tools (10 tools):**
+**Query Tools (12 tools):**
 - **Blueprint management**: Get blueprint information (`get_bp()`)
 - **Infrastructure queries**: Get racks (`get_racks()`), routing zones (`get_rz()`)
 - **Network queries**: Get virtual networks (`get_vn()`), remote gateways (`get_remote_gw()`)
+- **Connectivity templates**: Get connectivity templates (`get_ct()`), application endpoints (`get_app_ep()`)
 - **System queries**: Get systems/devices (`get_system_info()`)
 - **Monitoring**: Get anomalies (`get_anomalies()`), protocol sessions (`get_protocol_sessions()`)
 - **Configuration queries**: Check diff status (`get_diff_status()`), get templates (`get_templates()`)
 
-**Management Tools (2 tools):**
+**Management Tools (3 tools):**
 - **Configuration management**: Deploy configurations (`deploy()`), delete blueprints (`delete_blueprint()`)
+- **Policy management**: Apply connectivity template policies (`apply_ct_policies()`)
 
 **Create Tools (4 tools):**
-- **Network provisioning**: Create virtual networks (`create_vn()`), remote gateways (`create_remote_gw()`)
+- **Network provisioning**: Create virtual networks with advanced options (`create_vn()`), remote gateways (`create_remote_gw()`)
 - **Blueprint creation**: Create datacenter (`create_datacenter_blueprint()`) and freeform blueprints (`create_freeform_blueprint()`)
 
 ### Key Components
 
 - **Native FastMCP Transport**: Uses FastMCP's built-in streamable-http with automatic SSE upgrades
 - **Config-based Authentication**: Simple authentication using configuration file credentials
+- **Enhanced Virtual Network Creation**: Advanced VN creation with VXLAN/VLAN support, SVI IPs, and leaf expansion
+- **Connectivity Template Management**: Query connectivity templates and manage application endpoint policy assignments
+- **Policy Batch Operations**: Apply/remove connectivity template policies across multiple interfaces
 - **Remote Gateway Management**: Comprehensive EVPN remote gateway creation with optional parameters
 - **Flexible Configuration**: Support for various server:port configurations with 443 as default
 - **Consistent Error Handling**: All functions use `response.raise_for_status()` and proper exception handling

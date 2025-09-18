@@ -6,7 +6,9 @@ A Model Context Protocol (MCP) server that provides tools for interacting with J
 
 - **Blueprint Management**: Create, retrieve, and delete blueprint configurations
 - **Infrastructure Queries**: Get rack, routing zone, and system information  
-- **Network Provisioning**: Create virtual networks and remote gateways
+- **Network Provisioning**: Create virtual networks with advanced configuration options and remote gateways
+- **Connectivity Templates**: Manage connectivity templates and application endpoint assignments
+- **Policy Management**: Apply and remove connectivity template policies from application endpoints
 - **Configuration Management**: Check deployment status and deploy configurations
 - **Protocol Monitoring**: Monitor BGP and other protocol sessions
 - **Anomaly Detection**: Retrieve and analyze blueprint anomalies
@@ -59,17 +61,19 @@ python3 apstra_mcp.py -t streamable-http -H 0.0.0.0 -p 8080 -f apstra_config.jso
 pip install -r requirements.txt
 ```
 
-## Available Tools (18 total)
+## Available Tools (21 total)
 
 ### Health & Status Tools (2 tools)
 - `health()` - Server health check and Apstra connectivity status
 - `formatting_guidelines()` - Get formatting guidelines for network data presentation
 
-### Query Tools (10 tools)
+### Query Tools (12 tools)
 - `get_bp()` - Get blueprint information
 - `get_racks(blueprint_id)` - Get rack information  
 - `get_rz(blueprint_id)` - Get routing zones
 - `get_vn(blueprint_id)` - Get virtual networks
+- `get_ct(blueprint_id)` - Get connectivity templates
+- `get_app_ep(blueprint_id)` - Get application endpoints for connectivity templates
 - `get_system_info(blueprint_id)` - Get system/device information
 - `get_protocol_sessions(blueprint_id)` - Get protocol sessions
 - `get_anomalies(blueprint_id)` - Get blueprint anomalies
@@ -77,12 +81,13 @@ pip install -r requirements.txt
 - `get_diff_status(blueprint_id)` - Get deployment diff status
 - `get_templates()` - Get available templates
 
-### Management Tools (2 tools)
+### Management Tools (3 tools)
 - `deploy(blueprint_id, description, staging_version)` - Deploy configurations
 - `delete_blueprint(blueprint_id)` - Delete blueprints
+- `apply_ct_policies(blueprint_id, application_points)` - Apply/remove connectivity template policies to application endpoints
 
 ### Create Tools (4 tools)
-- `create_vn(blueprint_id, security_zone_id, vn_name)` - Create virtual networks
+- `create_vn(blueprint_id, security_zone_id, vn_name, virtual_gateway_ipv4, ipv4_subnet, ...)` - Create virtual networks with advanced configuration options
 - `create_remote_gw(blueprint_id, gw_ip, gw_asn, gw_name, local_gw_nodes, ...)` - Create remote gateways  
 - `create_datacenter_blueprint(blueprint_name, template_id)` - Create datacenter blueprints
 - `create_freeform_blueprint(blueprint_name)` - Create freeform blueprints
@@ -128,7 +133,10 @@ Update the paths to match your installation directory.
 
 ### With Claude Desktop
 - "Show me all blueprints in the system"
-- "Create a virtual network called 'web-tier'"
+- "Create a virtual network called 'web-tier' with gateway 192.168.1.1 and subnet 192.168.1.0/24"
+- "Get all connectivity templates in blueprint X"
+- "Apply connectivity template policy Y to interface Z"
+- "Show me application endpoints for connectivity templates"
 - "Deploy the staging configuration"
 - "Check for any anomalies in blueprint X"
 
